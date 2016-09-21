@@ -22,9 +22,11 @@ extern zend_module_entry xhprof_module_entry;
 #define phpext_xhprof_ptr &xhprof_module_entry
 
 #ifdef PHP_WIN32
-#define PHP_XHPROF_API __declspec(dllexport)
+#   define PHP_XHPROF_API __declspec(dllexport)
+#elif defined(__GNUC__) && __GNUC__ >= 4
+#	define PHP_KD_PROFILER_API __attribute__ ((visibility("default")))
 #else
-#define PHP_XHPROF_API
+#   define PHP_XHPROF_API
 #endif
 
 #ifdef ZTS
