@@ -47,5 +47,5 @@ curl_close($ch);
 ```
 #####xhprof记录数据
 ```
-curl#http://www.baidu.com
+curl_exec#http://www.baidu.com
 ```
