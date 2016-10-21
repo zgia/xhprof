@@ -807,7 +807,7 @@ static char *hp_get_function_argument_summary(char *ret, zend_execute_data *data
         strcmp(ret, "mysqli_query") == 0 ||
         strcmp(ret, "mysqli::query") == 0) {
 
-        //code
+        spprintf(&result, 0, "%s", ret);
 
     } else if (strcmp(ret, "PDOStatement::execute") == 0) {
         zval *object = (data->This.value.obj) ? &(data->This) : NULL;
@@ -870,6 +870,8 @@ static char *hp_get_function_argument_summary(char *ret, zend_execute_data *data
 
                     }ZEND_HASH_FOREACH_END();
 
+                    zend_string_release(pattern_str);
+
                     spprintf(&result, 0, "%s#%s", ret, Z_STRVAL(tmp_zv));
 
                 } else {
@@ -877,7 +879,7 @@ static char *hp_get_function_argument_summary(char *ret, zend_execute_data *data
                 }
 
                 zval_ptr_dtor(&tmp_zv);
-                zend_string_release(pattern_str);
+
             }
 
             zval_ptr_dtor(&tmp_obj);
@@ -907,7 +909,7 @@ static char *hp_get_function_argument_summary(char *ret, zend_execute_data *data
         zval_ptr_dtor(&fname);
 
     } else {
-        return ret;
+        spprintf(&result, 0, "%s", ret);
     }
 
     efree(ret);
