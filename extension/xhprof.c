@@ -807,7 +807,9 @@ static char *hp_get_function_argument_summary(char *ret, zend_execute_data *data
         strcmp(ret, "mysqli_query") == 0 ||
         strcmp(ret, "mysqli::query") == 0) {
 
-        spprintf(&result, 0, "%s", ret);
+        zval *arg;
+        arg = ZEND_CALL_ARG(data, 1);
+        spprintf(&result, 0, "%s#%s", ret, Z_STRVAL_P(arg));
 
     } else if (strcmp(ret, "PDOStatement::execute") == 0) {
         zval *object = (data->This.value.obj) ? &(data->This) : NULL;
