@@ -6,7 +6,7 @@ This version supports PHP7
 #Installation
 ```
 git clone https://github.com/longxinH/xhprof.git ./xhprof
-cd xhprof
+cd xhprof/extension/
 /path/to/php7/bin/phpize
 ./configure --with-php-config=/path/to/php7/bin/php-config
 make && sudo make install
