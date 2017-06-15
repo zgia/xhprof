@@ -245,16 +245,20 @@ static hp_global_t       hp_globals;
 
 /* Pointer to the original execute function */
 static void (*_zend_execute_ex) (zend_execute_data *execute_data);
+ZEND_DLEXPORT void hp_execute_ex (zend_execute_data *execute_data);
 
 /* Pointer to the origianl execute_internal function */
 static void (*_zend_execute_internal) (zend_execute_data *execute_data, zval *return_value);
-
+ZEND_DLEXPORT void hp_execute_internal(zend_execute_data *execute_data, zval *return_value);
 
 /* Pointer to the original compile function */
 static zend_op_array * (*_zend_compile_file) (zend_file_handle *file_handle, int type);
+ZEND_DLEXPORT zend_op_array* hp_compile_file(zend_file_handle *file_handle, int type);
 
 /* Pointer to the original compile string function (used by eval) */
 static zend_op_array * (*_zend_compile_string) (zval *source_string, char *filename);
+ZEND_DLEXPORT zend_op_array* hp_compile_string(zval *source_string, char *filename);
+
 
 /* Bloom filter for function names to be ignored */
 #define INDEX_2_BYTE(index)  (index >> 3)
@@ -490,6 +494,22 @@ PHP_MINIT_FUNCTION(xhprof)
 
     hp_ignored_functions_filter_clear();
 
+    /* Replace zend_compile with our proxy */
+    _zend_compile_file = zend_compile_file;
+    zend_compile_file  = hp_compile_file;
+
+    /* Replace zend_compile_string with our proxy */
+    _zend_compile_string = zend_compile_string;
+    zend_compile_string = hp_compile_string;
+
+    /* Replace zend_execute with our proxy */
+    _zend_execute_ex = zend_execute_ex;
+    zend_execute_ex  = hp_execute_ex;
+
+    /* Replace zend_execute_internal with our proxy */
+    _zend_execute_internal = zend_execute_internal;
+    zend_execute_internal = hp_execute_internal;
+
 #if defined(DEBUG)
     /* To make it random number generator repeatable to ease testing. */
     srand(0);
@@ -507,6 +527,12 @@ PHP_MSHUTDOWN_FUNCTION(xhprof)
 
     /* free any remaining items in the free list */
     hp_free_the_free_list();
+
+    /* Remove proxies, restore the originals */
+    zend_execute_ex       = _zend_execute_ex;
+    zend_execute_internal = _zend_execute_internal;
+    zend_compile_file     = _zend_compile_file;
+    zend_compile_string   = _zend_compile_string;
 
     UNREGISTER_INI_ENTRIES();
 
@@ -1708,6 +1734,11 @@ void hp_mode_sampled_endfn_cb(hp_entry_t **entries)
 
 ZEND_DLEXPORT void hp_execute_ex (zend_execute_data *execute_data)
 {
+    if (!hp_globals.enabled) {
+        _zend_execute_ex(execute_data);
+        return;
+    }
+
     char *func = NULL;
     int hp_profile_flag = 1;
 
@@ -1740,6 +1771,11 @@ ZEND_DLEXPORT void hp_execute_ex (zend_execute_data *execute_data)
 
 ZEND_DLEXPORT void hp_execute_internal(zend_execute_data *execute_data, zval *return_value)
 {
+    if (!hp_globals.enabled || (hp_globals.xhprof_flags & XHPROF_FLAGS_NO_BUILTINS)) {
+        execute_internal(execute_data, return_value);
+        return;
+    }
+
     char             *func = NULL;
     int    hp_profile_flag = 1;
 
@@ -1773,6 +1809,11 @@ ZEND_DLEXPORT void hp_execute_internal(zend_execute_data *execute_data, zval *re
  */
 ZEND_DLEXPORT zend_op_array* hp_compile_file(zend_file_handle *file_handle, int type)
 {
+    if (!hp_globals.enabled) {
+        _zend_compile_file(file_handle, type);
+        return;
+    }
+
     const char     *filename;
     char           *func;
     int            len;
@@ -1800,6 +1841,11 @@ ZEND_DLEXPORT zend_op_array* hp_compile_file(zend_file_handle *file_handle, int 
  */
 ZEND_DLEXPORT zend_op_array* hp_compile_string(zval *source_string, char *filename)
 {
+    if (!hp_globals.enabled) {
+        _zend_compile_string(source_string, filename);
+        return;
+    }
+
     char          *func;
     int           len;
     zend_op_array *ret;
@@ -1838,28 +1884,6 @@ static void hp_begin(long level, long xhprof_flags)
 
         hp_globals.enabled      = 1;
         hp_globals.xhprof_flags = (uint32)xhprof_flags;
-
-        /* Replace zend_compile with our proxy */
-        _zend_compile_file = zend_compile_file;
-        zend_compile_file  = hp_compile_file;
-
-        /* Replace zend_compile_string with our proxy */
-        _zend_compile_string = zend_compile_string;
-        zend_compile_string = hp_compile_string;
-
-        /* Replace zend_execute with our proxy */
-        _zend_execute_ex = zend_execute_ex;
-        zend_execute_ex  = hp_execute_ex;
-
-        /* Replace zend_execute_internal with our proxy */
-        _zend_execute_internal = zend_execute_internal;
-
-        if (!(hp_globals.xhprof_flags & XHPROF_FLAGS_NO_BUILTINS)) {
-            /* if NO_BUILTINS is not set (i.e. user wants to profile builtins),
-            * then we intercept internal (builtin) function calls.
-            */
-            zend_execute_internal = hp_execute_internal;
-        }
 
         /* Initialize with the dummy mode first Having these dummy callbacks saves
          * us from checking if any of the callbacks are NULL everywhere. */
@@ -1924,12 +1948,6 @@ static void hp_stop()
     while (hp_globals.entries) {
         END_PROFILING(&hp_globals.entries, hp_profile_flag);
     }
-
-    /* Remove proxies, restore the originals */
-    zend_execute_ex       = _zend_execute_ex;
-    zend_execute_internal = _zend_execute_internal;
-    zend_compile_file     = _zend_compile_file;
-    zend_compile_string   = _zend_compile_string;
 
     /* Resore cpu affinity. */
     restore_cpu_affinity(&hp_globals.prev_mask);
