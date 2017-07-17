@@ -20,7 +20,7 @@ xhprof.output_dir = /tmp/xhprof
 ```
 
 # Added
-#### PDO::prepare
+### PDO::prepare
 Convert preprocessing placeholders for actual parameters, more intuitive analytic performance (does not change the zend execution process)
 ```php
 $_sth = $db->prepare("SELECT * FROM user where userid = :id and username = :name");
@@ -37,7 +37,7 @@ PDOStatement::execute#SELECT * FROM user where userid = 1 and username = admin
 PDOStatement::execute#SELECT * FROM user where userid = 1
 ```
 
-#### curl
+### Curl
 ```php
 $ch = curl_init();
 curl_setopt($ch, CURLOPT_URL, "http://www.baidu.com");
