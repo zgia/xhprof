@@ -1810,8 +1810,7 @@ ZEND_DLEXPORT void hp_execute_internal(zend_execute_data *execute_data, zval *re
 ZEND_DLEXPORT zend_op_array* hp_compile_file(zend_file_handle *file_handle, int type)
 {
     if (!hp_globals.enabled) {
-        _zend_compile_file(file_handle, type);
-        return;
+        return _zend_compile_file(file_handle, type);
     }
 
     const char     *filename;
@@ -1842,8 +1841,7 @@ ZEND_DLEXPORT zend_op_array* hp_compile_file(zend_file_handle *file_handle, int 
 ZEND_DLEXPORT zend_op_array* hp_compile_string(zval *source_string, char *filename)
 {
     if (!hp_globals.enabled) {
-        _zend_compile_string(source_string, filename);
-        return;
+        return _zend_compile_string(source_string, filename);
     }
 
     char          *func;
