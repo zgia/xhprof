@@ -20,6 +20,18 @@ xhprof.output_dir = /tmp/xhprof
 ```
 
 # Added
+### PDO::exec
+### PDO::query
+### mysqli_query
+```php
+$mysqli = new mysqli("localhost", "my_user", "my_password", "user");
+$result = $mysqli->query("SELECT * FROM user LIMIT 10");
+```
+##### Output data
+```
+mysqli::query#SELECT * FROM user LIMIT 10
+```
+
 ### PDO::prepare
 Convert preprocessing placeholders for actual parameters, more intuitive analytic performance (does not change the zend execution process)
 ```php
