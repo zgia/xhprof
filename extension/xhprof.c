@@ -830,13 +830,13 @@ static char *hp_get_function_argument_summary(char *ret, zend_execute_data *data
 
     if (strcmp(ret, "PDO::exec") == 0 ||
         strcmp(ret, "PDO::query") == 0 ||
-        strcmp(ret, "mysqli_query") == 0 ||
         strcmp(ret, "mysqli::query") == 0) {
-
         zval *arg;
         arg = ZEND_CALL_ARG(data, 1);
         spprintf(&result, 0, "%s#%s", ret, Z_STRVAL_P(arg));
-
+    } else if (strcmp(ret, "mysqli_query") == 0) {
+        zval *arg = ZEND_CALL_ARG(data, 2);
+        spprintf(&result, 0, "%s#%s", ret, Z_STRVAL_P(arg));
     } else if (strcmp(ret, "PDOStatement::execute") == 0) {
         zval *object = (data->This.value.obj) ? &(data->This) : NULL;
 
