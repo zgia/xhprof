@@ -1083,7 +1083,7 @@ static const char *hp_get_base_filename(const char *filename)
     return filename;
 }
 
-static char *hp_concat_char(const char *s1, size_t len1, const char *s2, size_t len2, const char *seperator, size_t sep_len)
+static char *hp_concat_char(const char *s1, const char *s2, const char *seperator)
 {
     char *result;
     spprintf(&result, 0, "%s%s%s", s1, seperator, s2);
@@ -1115,11 +1115,12 @@ static char *hp_get_function_name(zend_execute_data * execute_data)
 
     if (!func) {
         return NULL;
-    } else if (curr_func->common.scope != NULL) {
+    }
+
+    if (curr_func->common.scope != NULL) {
         char *sep = "::";
         cls = curr_func->common.scope->name->val;
-        ret = hp_concat_char(cls, curr_func->common.scope->name->len, func->val, func->len, sep, strlen(sep) + 1);
-
+        ret = hp_concat_char(cls, func->val, sep);
     } else {
         spprintf(&ret, 0, "%s", ZSTR_VAL(func));
     }
