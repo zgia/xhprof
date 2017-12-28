@@ -6,6 +6,7 @@ This version supports PHP7
 # PHP Version
 - 7.0
 - 7.1
+- 7.2
 
 # Installation
 ```

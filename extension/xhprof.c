@@ -34,7 +34,9 @@
 #include <stdlib.h>
 #include <unistd.h>
 
+#if HAVE_PCRE
 #include "ext/pcre/php_pcre.h"
+#endif
 
 #ifdef __FreeBSD__
 # if __FreeBSD_version >= 700110
@@ -79,7 +81,7 @@
  */
 
 /* XHProf version                           */
-#define XHPROF_VERSION       "1.0.0"
+#define XHPROF_VERSION       "1.1.0"
 
 /* Fictitious function name to represent top of the call tree. The paranthesis
  * in the name is to ensure we don't conflict with user function names.  */
@@ -831,8 +833,7 @@ static char *hp_get_function_argument_summary(char *ret, zend_execute_data *data
     if (strcmp(ret, "PDO::exec") == 0 ||
         strcmp(ret, "PDO::query") == 0 ||
         strcmp(ret, "mysqli::query") == 0) {
-        zval *arg;
-        arg = ZEND_CALL_ARG(data, 1);
+        zval *arg = ZEND_CALL_ARG(data, 1);
         spprintf(&result, 0, "%s#%s", ret, Z_STRVAL_P(arg));
     } else if (strcmp(ret, "mysqli_query") == 0) {
         zval *arg = ZEND_CALL_ARG(data, 2);
@@ -848,6 +849,13 @@ static char *hp_get_function_argument_summary(char *ret, zend_execute_data *data
             convert_to_array(&tmp_obj);
 
             if ((value = zend_hash_str_find(Z_ARRVAL(tmp_obj), ZEND_STRL("queryString"))) != NULL) {
+#ifndef HAVE_PCRE
+                spprintf(&result, 0, "%s#%s", ret, Z_STRVAL_P(value));
+                zval_ptr_dtor(&tmp_obj);
+                efree(ret);
+                return result;
+#endif
+
                 zval *arg, tmp_zv;
                 pcre_cache_entry *pce_regexp;
                 zend_string *pattern_str = NULL;
@@ -884,17 +892,20 @@ static char *hp_get_function_argument_summary(char *ret, zend_execute_data *data
 
                     ZEND_HASH_FOREACH_KEY_VAL(Z_ARRVAL_P(arg), num_key, key, val)
                     {
+#if PHP_VERSION_ID < 70200
                         zval repl;
                         ZVAL_STR(&repl, zval_get_string(val));
-
                         zend_string *res = php_pcre_replace_impl(pce_regexp, NULL, Z_STRVAL(tmp_zv), Z_STRLEN(tmp_zv), &repl, 0, 1, 0);
-
+                        zval_ptr_dtor(&repl);
+#elif PHP_VERSION_ID >= 70200
+                        zend_string *repl = zval_get_string(val);
+                        zend_string *res = php_pcre_replace_impl(pce_regexp, NULL, Z_STRVAL(tmp_zv), Z_STRLEN(tmp_zv), repl, 1, 0);
+                        zend_string_release(repl);
+#endif
                         if (res != NULL) {
                             zval_ptr_dtor(&tmp_zv);
                             ZVAL_STR(&tmp_zv, res);
                         }
-
-                        zval_ptr_dtor(&repl);
 
                     }ZEND_HASH_FOREACH_END();
 
