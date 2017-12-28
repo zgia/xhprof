@@ -3,6 +3,10 @@ XHProf is a function-level hierarchical profiler for PHP and has a simple HTML b
 
 This version supports PHP7
 
+# PHP Version
+- 7.0
+- 7.1
+
 # Installation
 ```
 git clone https://github.com/longxinH/xhprof.git ./xhprof
