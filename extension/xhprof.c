@@ -209,6 +209,8 @@ PHP_GINIT_FUNCTION(xhprof)
     xhprof_globals->root = NULL;
     xhprof_globals->trace_callbacks = NULL;
     xhprof_globals->ignored_functions = NULL;
+    xhprof_globals->sample_interval = XHPROF_DEFAULT_SAMPLING_INTERVAL;
+    xhprof_globals->sample_deph = INT_MAX;
 }
 
 /**
