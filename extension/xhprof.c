@@ -103,7 +103,18 @@ PHP_INI_BEGIN()
  * directory specified by this ini setting.
  */
 PHP_INI_ENTRY("xhprof.output_dir", "", PHP_INI_ALL, NULL)
+/* sampling_interval:
+ * Sampling interval to be used by the sampling profiler, in microseconds.
+ */
+#define STRINGIFY_(X) #X
+#define STRINGIFY(X) STRINGIFY_(X)
 
+STD_PHP_INI_ENTRY("xhprof.sampling_interval", STRINGIFY(XHPROF_DEFAULT_SAMPLING_INTERVAL), PHP_INI_ALL, OnUpdateLong, sampling_interval, xhprof_global_t, xhprof_globals)
+
+/* sampling_depth:
+ * Depth to trace call-chain by the sampling profiler
+ */
+STD_PHP_INI_ENTRY("xhprof.sampling_depth", STRINGIFY(INT_MAX), PHP_INI_ALL, OnUpdateLong, sampling_depth, xhprof_global_t, xhprof_globals)
 PHP_INI_END()
 
 /* Init module */
@@ -220,6 +231,9 @@ PHP_MINIT_FUNCTION(xhprof)
 
     for (i = 0; i < 256; i++) {
         XHPROF_G(func_hash_counters[i]) = 0;
+    }
+    if (XHPROF_G(sampling_interval) < XHPROF_MINIMAL_SAMPLING_INTERVAL) {
+        XHPROF_G(sampling_interval) = XHPROF_MINIMAL_SAMPLING_INTERVAL;
     }
 
     /* Replace zend_compile with our proxy */
@@ -769,7 +783,7 @@ void hp_sample_stack(hp_entry_t  **entries)
     snprintf(key, sizeof(key), "%d.%06d", XHPROF_G(last_sample_time).tv_sec, XHPROF_G(last_sample_time).tv_usec);
 
     /* Init stats in the global stats_count hashtable */
-    symbol = hp_get_function_stack(*entries, INT_MAX);
+    symbol = hp_get_function_stack(*entries, XHPROF_G(sampling_depth));
 
     add_assoc_string(&XHPROF_G(stats_count), key, symbol);
 
@@ -801,7 +815,7 @@ void hp_sample_check(hp_entry_t **entries)
         XHPROF_G(last_sample_tsc) += XHPROF_G(sampling_interval_tsc);
 
         /* bump last_sample_time - HAS TO BE UPDATED BEFORE calling hp_sample_stack */
-        incr_us_interval(&XHPROF_G(last_sample_time), XHPROF_SAMPLING_INTERVAL);
+        incr_us_interval(&XHPROF_G(last_sample_time), XHPROF_G(sample_interval));
 
         /* sample the stack */
         hp_sample_stack(entries);
@@ -946,10 +960,10 @@ void hp_mode_sampled_init_cb()
     /* Find the microseconds that need to be truncated */
     gettimeofday(&XHPROF_G(last_sample_time), 0);
     now = XHPROF_G(last_sample_time);
-    hp_trunc_time(&XHPROF_G(last_sample_time), XHPROF_SAMPLING_INTERVAL);
+    hp_trunc_time(&XHPROF_G(last_sample_time), XHPROF_G(sample_interval));
 
     /* Convert sampling interval to ticks */
-    XHPROF_G(sampling_interval_tsc) = XHPROF_SAMPLING_INTERVAL;
+    XHPROF_G(sampling_interval_tsc) = XHPROF_G(sample_interval);
 }
 
 
