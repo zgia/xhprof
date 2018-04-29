@@ -209,8 +209,8 @@ PHP_GINIT_FUNCTION(xhprof)
     xhprof_globals->root = NULL;
     xhprof_globals->trace_callbacks = NULL;
     xhprof_globals->ignored_functions = NULL;
-    xhprof_globals->sample_interval = XHPROF_DEFAULT_SAMPLING_INTERVAL;
-    xhprof_globals->sample_deph = INT_MAX;
+    xhprof_globals->sampling_interval = XHPROF_DEFAULT_SAMPLING_INTERVAL;
+    xhprof_globals->sampling_depth = INT_MAX;
 }
 
 /**
@@ -817,7 +817,7 @@ void hp_sample_check(hp_entry_t **entries)
         XHPROF_G(last_sample_tsc) += XHPROF_G(sampling_interval_tsc);
 
         /* bump last_sample_time - HAS TO BE UPDATED BEFORE calling hp_sample_stack */
-        incr_us_interval(&XHPROF_G(last_sample_time), XHPROF_G(sample_interval));
+        incr_us_interval(&XHPROF_G(last_sample_time), XHPROF_G(sampling_interval));
 
         /* sample the stack */
         hp_sample_stack(entries);
@@ -962,10 +962,10 @@ void hp_mode_sampled_init_cb()
     /* Find the microseconds that need to be truncated */
     gettimeofday(&XHPROF_G(last_sample_time), 0);
     now = XHPROF_G(last_sample_time);
-    hp_trunc_time(&XHPROF_G(last_sample_time), XHPROF_G(sample_interval));
+    hp_trunc_time(&XHPROF_G(last_sample_time), XHPROF_G(sampling_interval));
 
     /* Convert sampling interval to ticks */
-    XHPROF_G(sampling_interval_tsc) = XHPROF_G(sample_interval);
+    XHPROF_G(sampling_interval_tsc) = XHPROF_G(sampling_interval);
 }
 
 
