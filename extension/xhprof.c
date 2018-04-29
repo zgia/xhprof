@@ -109,12 +109,12 @@ PHP_INI_ENTRY("xhprof.output_dir", "", PHP_INI_ALL, NULL)
 #define STRINGIFY_(X) #X
 #define STRINGIFY(X) STRINGIFY_(X)
 
-STD_PHP_INI_ENTRY("xhprof.sampling_interval", STRINGIFY(XHPROF_DEFAULT_SAMPLING_INTERVAL), PHP_INI_ALL, OnUpdateLong, sampling_interval, xhprof_global_t, xhprof_globals)
+STD_PHP_INI_ENTRY("xhprof.sampling_interval", STRINGIFY(XHPROF_DEFAULT_SAMPLING_INTERVAL), PHP_INI_ALL, OnUpdateLong, sampling_interval, zend_xhprof_globals, xhprof_globals)
 
 /* sampling_depth:
  * Depth to trace call-chain by the sampling profiler
  */
-STD_PHP_INI_ENTRY("xhprof.sampling_depth", STRINGIFY(INT_MAX), PHP_INI_ALL, OnUpdateLong, sampling_depth, xhprof_global_t, xhprof_globals)
+STD_PHP_INI_ENTRY("xhprof.sampling_depth", STRINGIFY(INT_MAX), PHP_INI_ALL, OnUpdateLong, sampling_depth, zend_xhprof_globals, xhprof_globals)
 PHP_INI_END()
 
 /* Init module */
