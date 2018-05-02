@@ -315,6 +315,7 @@ PHP_MINFO_FUNCTION(xhprof)
     php_info_print_table_header(2, "xhprof support", "enabled");
     php_info_print_table_row(2, "Version", XHPROF_VERSION);
     php_info_print_table_end();
+    DISPLAY_INI_ENTRIES();
 }
 
 
