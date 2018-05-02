@@ -64,7 +64,8 @@ extern zend_module_entry xhprof_module_entry;
 #define XHPROF_FLAGS_MEMORY        0x0004   /* gather memory usage for funcs */
 
 /* Constants for XHPROF_MODE_SAMPLED        */
-#define XHPROF_SAMPLING_INTERVAL       100000      /* In microsecs        */
+#define XHPROF_DEFAULT_SAMPLING_INTERVAL       100000      /* In microsecs        */
+#define XHPROF_MINIMAL_SAMPLING_INTERVAL          100      /* In microsecs        */
 
 /* Constant for ignoring functions, transparent to hierarchical profile */
 #define XHPROF_MAX_IGNORED_FUNCTIONS  256
@@ -269,8 +270,9 @@ ZEND_BEGIN_MODULE_GLOBALS(xhprof)
     struct timeval   last_sample_time;
     uint64           last_sample_tsc;
     /* XHPROF_SAMPLING_INTERVAL in ticks */
+    long             sampling_interval;
     uint64           sampling_interval_tsc;
-
+    int              sampling_depth;
     /* XHProf flags */
     uint32 xhprof_flags;
 
