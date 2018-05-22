@@ -25,11 +25,11 @@ xhprof.output_dir = /tmp/xhprof
 ```
 
 ### php.ini configuration
-|      Options        |      Defaults      |   Explain    |
-| --------------- |:-------------:|:---------|
-|xhprof.output_dir  | "" | Output directory|
-|xhprof.sampling_interval  | 100000 | Sampling interval to be used by the sampling profiler, in microseconds|
-|xhprof.sampling_depth  | 2147483647 | Depth to trace call-chain by the sampling profiler|
+|      Options        |      Defaults      |   Version      |   Explain    |
+| --------------- |:-------------:|:-------------:|:---------|
+|xhprof.output_dir  | "" | All |Output directory|
+|xhprof.sampling_interval  | 100000 | v2.* | Sampling interval to be used by the sampling profiler, in microseconds|
+|xhprof.sampling_depth  | 2147483647 | v2.* | Depth to trace call-chain by the sampling profiler|
 
 # Added
 ### PDO::exec
