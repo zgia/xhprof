@@ -25,7 +25,7 @@ xhprof.output_dir = /tmp/xhprof
 ```
 
 ### php.ini configuration
-|      Options        |      Defaults      |   Version      |   Explain    |
+|      Options        |  Defaults  |  Version  |  Explain  |
 | --------------- |:-------------:|:-------------:|:---------|
 |xhprof.output_dir  | "" | All |Output directory|
 |xhprof.sampling_interval  | 100000 | v2.* | Sampling interval to be used by the sampling profiler, in microseconds|
