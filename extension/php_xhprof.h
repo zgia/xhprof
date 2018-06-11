@@ -39,7 +39,7 @@ extern zend_module_entry xhprof_module_entry;
  */
 
 /* XHProf version                           */
-#define XHPROF_VERSION       "2.0.0"
+#define XHPROF_VERSION       "2.0.1"
 
 /* Fictitious function name to represent top of the call tree. The paranthesis
  * in the name is to ensure we don't conflict with user function names.  */
@@ -293,7 +293,6 @@ PHP_MSHUTDOWN_FUNCTION(xhprof);
 PHP_RINIT_FUNCTION(xhprof);
 PHP_RSHUTDOWN_FUNCTION(xhprof);
 PHP_MINFO_FUNCTION(xhprof);
-PHP_GINIT_FUNCTION(xhprof);
 
 PHP_FUNCTION(xhprof_enable);
 PHP_FUNCTION(xhprof_disable);

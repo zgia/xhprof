@@ -200,7 +200,7 @@ PHP_FUNCTION(xhprof_sample_disable)
   /* else null is returned */
 }
 
-PHP_GINIT_FUNCTION(xhprof)
+static void php_xhprof_init_globals(zend_xhprof_globals *xhprof_globals)
 {
     xhprof_globals->enabled = 0;
     xhprof_globals->ever_enabled = 0;
@@ -211,6 +211,21 @@ PHP_GINIT_FUNCTION(xhprof)
     xhprof_globals->ignored_functions = NULL;
     xhprof_globals->sampling_interval = XHPROF_DEFAULT_SAMPLING_INTERVAL;
     xhprof_globals->sampling_depth = INT_MAX;
+
+    ZVAL_UNDEF(&xhprof_globals->stats_count);
+
+    /* no free hp_entry_t structures to start with */
+    xhprof_globals->entry_free_list = NULL;
+
+    int i;
+
+    for (i = 0; i < 256; i++) {
+        xhprof_globals->func_hash_counters[i] = 0;
+    }
+
+    if (xhprof_globals->sampling_interval < XHPROF_MINIMAL_SAMPLING_INTERVAL) {
+        xhprof_globals->sampling_interval = XHPROF_MINIMAL_SAMPLING_INTERVAL;
+    }
 }
 
 /**
@@ -220,23 +235,11 @@ PHP_GINIT_FUNCTION(xhprof)
  */
 PHP_MINIT_FUNCTION(xhprof)
 {
-    int i;
+    ZEND_INIT_MODULE_GLOBALS(xhprof, php_xhprof_init_globals, NULL);
 
     REGISTER_INI_ENTRIES();
 
     hp_register_constants(INIT_FUNC_ARGS_PASSTHRU);
-
-    ZVAL_UNDEF(&XHPROF_G(stats_count));
-
-    /* no free hp_entry_t structures to start with */
-    XHPROF_G(entry_free_list) = NULL;
-
-    for (i = 0; i < 256; i++) {
-        XHPROF_G(func_hash_counters[i]) = 0;
-    }
-    if (XHPROF_G(sampling_interval) < XHPROF_MINIMAL_SAMPLING_INTERVAL) {
-        XHPROF_G(sampling_interval) = XHPROF_MINIMAL_SAMPLING_INTERVAL;
-    }
 
     /* Replace zend_compile with our proxy */
     _zend_compile_file = zend_compile_file;
