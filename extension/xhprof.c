@@ -397,8 +397,6 @@ void hp_ignored_functions_clear(hp_ignored_functions *functions)
 
     memset(functions->filter, 0, XHPROF_IGNORED_FUNCTION_FILTER_SIZE);
     efree(functions);
-
-    functions = NULL;
 }
 
 hp_ignored_functions *hp_ignored_functions_init(char **names)
@@ -1375,26 +1373,22 @@ static char **hp_strings_in_zval(zval  *values)
         ht    = Z_ARRVAL_P(values);
         count = zend_hash_num_elements(ht);
 
-        if((result = (char**) malloc(sizeof(char*) * (count + 1))) == NULL) {
+        if((result = (char**) emalloc(sizeof(char*) * (count + 1))) == NULL) {
             return result;
         }
 
-        ZEND_HASH_FOREACH_KEY_VAL(ht, num_key, key, val)
-        {
-            if (!key)
-            {
-                if (Z_TYPE_P(val) == IS_STRING && strcmp(Z_STRVAL_P(val), ROOT_SYMBOL)
-                       != 0)
-                {
+        ZEND_HASH_FOREACH_KEY_VAL(ht, num_key, key, val) {
+            if (!key) {
+                if (Z_TYPE_P(val) == IS_STRING && strcmp(Z_STRVAL_P(val), ROOT_SYMBOL) != 0) {
                     /* do not ignore "main" */
-                    result[ix] = strdup(Z_STRVAL_P(val));
+                    result[ix] = estrdup(Z_STRVAL_P(val));
                     ix++;
                 }
             }
-        }ZEND_HASH_FOREACH_END();
+        } ZEND_HASH_FOREACH_END();
 
     } else if (Z_TYPE_P(values) == IS_STRING) {
-        if((result = (char**) malloc(sizeof(char*) * 2)) == NULL) {
+        if ((result = (char**) emalloc(sizeof(char*) * 2)) == NULL) {
             return result;
         }
         result[0] = estrdup(Z_STRVAL_P(values));
@@ -1417,11 +1411,10 @@ static inline void hp_array_del(char **name_array)
     if (name_array != NULL) {
         int i = 0;
         for(; name_array[i] != NULL && i < XHPROF_MAX_IGNORED_FUNCTIONS; i++) {
-            free(name_array[i]);
+            efree(name_array[i]);
         }
 
-
-        free(name_array);
+        efree(name_array);
     }
 }
 
@@ -1643,6 +1636,10 @@ char *hp_get_trace_callback(char* symbol, zend_execute_data *data)
 void hp_init_trace_callbacks()
 {
     hp_trace_callback callback;
+
+    if (XHPROF_G(trace_callbacks)) {
+        return;
+    }
 
     XHPROF_G(trace_callbacks) = NULL;
     ALLOC_HASHTABLE(XHPROF_G(trace_callbacks));
