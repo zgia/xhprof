@@ -142,7 +142,7 @@ do {                                                                    \
 #define INDEX_2_BYTE(index)  (index >> 3)
 #define INDEX_2_BIT(index)   (1 << (index & 0x7));
 
-#define register_trace_callback(function_name, cb) zend_hash_str_update(XHPROF_G(trace_callbacks), function_name, sizeof(function_name) - 1, &cb);
+#define register_trace_callback(function_name, cb) zend_hash_str_update_mem(XHPROF_G(trace_callbacks), function_name, sizeof(function_name) - 1, &cb, sizeof(hp_trace_callback));
 
 /* XHProf maintains a stack of entries being profiled. The memory for the entry
  * is passed by the layer that invokes BEGIN_PROFILING(), e.g. the hp_execute()

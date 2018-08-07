@@ -1633,6 +1633,10 @@ char *hp_get_trace_callback(char* symbol, zend_execute_data *data)
     return result;
 }
 
+static inline void hp_free_trace_callbacks(zval *val) {
+    efree(Z_PTR_P(val));
+}
+
 void hp_init_trace_callbacks()
 {
     hp_trace_callback callback;
@@ -1648,7 +1652,7 @@ void hp_init_trace_callbacks()
         return;
     }
 
-    zend_hash_init(XHPROF_G(trace_callbacks), 16, NULL, NULL, 0);
+    zend_hash_init(XHPROF_G(trace_callbacks), 8, NULL, hp_free_trace_callbacks, 0);
 
     callback = hp_trace_callback_sql_query;
     register_trace_callback("PDO::exec", callback);
