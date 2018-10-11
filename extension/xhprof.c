@@ -853,7 +853,7 @@ static uint64 cpu_timer()
     struct rusage ru;
     getrusage(RUSAGE_SELF, &ru);
 
-	return (ru.ru_utime.tv_sec  + ru.ru_stime.tv_sec ) * 1000 * 1000 + (ru.ru_utime.tv_usec + ru.ru_stime.tv_usec);
+    return (ru.ru_utime.tv_sec  + ru.ru_stime.tv_sec ) * 1000 * 1000 + (ru.ru_utime.tv_usec + ru.ru_stime.tv_usec);
 #endif
 }
 
@@ -1605,7 +1605,7 @@ char *hp_get_trace_callback(char* symbol, zend_execute_data *data)
     char *result;
     hp_trace_callback *callback;
 
-    callback = (hp_trace_callback*)zend_hash_str_find(XHPROF_G(trace_callbacks), symbol, strlen(symbol));
+    callback = (hp_trace_callback*)zend_hash_str_find_ptr(XHPROF_G(trace_callbacks), symbol, strlen(symbol));
     if (callback) {
         result = (*callback)(symbol, data);
     } else {
