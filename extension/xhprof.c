@@ -498,20 +498,19 @@ void hp_clean_profiler_state()
  * @param  entry        hp_entry
  * @author veeve
  */
-char* hp_get_entry_name(hp_entry_t *entry)
+size_t hp_get_entry_name(hp_entry_t *entry, char *result_buf, size_t result_len)
 {
-    char *result_buf;
+    size_t len;
 
     /* Add '@recurse_level' if required */
     /* NOTE:  Dont use snprintf's return val as it is compiler dependent */
     if (entry->rlvl_hprof) {
-        spprintf(&result_buf, 0, "%s@%d", entry->name_hprof, entry->rlvl_hprof);
-    }
-    else {
-        spprintf(&result_buf, 0, "%s", entry->name_hprof);
+        len = snprintf(result_buf, result_len, "%s@%d", entry->name_hprof, entry->rlvl_hprof);
+    } else {
+        len = snprintf(result_buf, result_len, "%s", entry->name_hprof);
     }
 
-    return result_buf;
+    return len;
 }
 
 /**
@@ -555,35 +554,39 @@ int hp_ignore_entry_work(uint8 hash_code, char *curr_func)
  *
  * @author kannan, veeve
  */
-char* hp_get_function_stack(hp_entry_t *entry, int level)
+size_t hp_get_function_stack(hp_entry_t *entry, int level, char *result_buf, size_t result_len)
 {
-    char *result_buf, *curr_result, *prev_result;
+    size_t len = 0;
 
     /* End recursion if we dont need deeper levels or we dont have any deeper
     * levels */
     if (!entry->prev_hprof || (level <= 1)) {
-        return hp_get_entry_name(entry);
+        return hp_get_entry_name(entry, result_buf, result_len);
     }
 
     /* Take care of all ancestors first */
-    prev_result = hp_get_function_stack(entry->prev_hprof, level - 1);
+    len = hp_get_function_stack(entry->prev_hprof, level - 1, result_buf, result_len);
 
     /* Append the delimiter */
 # define    HP_STACK_DELIM        "==>"
+# define    HP_STACK_DELIM_LEN    (sizeof(HP_STACK_DELIM) - 1)
+
+    if (result_len < (len + HP_STACK_DELIM_LEN)) {
+        /* Insufficient result_buf. Bail out! */
+        return len;
+    }
 
     /* Add delimiter only if entry had ancestors */
-    strcat(prev_result, HP_STACK_DELIM);
+    if (len) {
+        strncat(result_buf + len, HP_STACK_DELIM, result_len - len);
+        len += HP_STACK_DELIM_LEN;
+    }
 
+# undef     HP_STACK_DELIM_LEN
 # undef     HP_STACK_DELIM
 
-    curr_result = hp_get_entry_name(entry);
-
     /* Append the current function name */
-    spprintf(&result_buf, 0, "%s%s", prev_result, curr_result);
-
-    efree(prev_result);
-    efree(curr_result);
-    return result_buf;
+    return len + hp_get_entry_name(entry, result_buf + len, result_len - len);
 }
 
 /**
@@ -776,17 +779,15 @@ void hp_trunc_time(struct timeval *tv, uint64 intr)
 void hp_sample_stack(hp_entry_t  **entries)
 {
     char key[SCRATCH_BUF_LEN];
-    char *symbol;
+    char symbol[SCRATCH_BUF_LEN * 1000];
 
     /* Build key */
     snprintf(key, sizeof(key), "%d.%06d", XHPROF_G(last_sample_time).tv_sec, XHPROF_G(last_sample_time).tv_usec);
 
     /* Init stats in the global stats_count hashtable */
-    symbol = hp_get_function_stack(*entries, XHPROF_G(sampling_depth));
+    hp_get_function_stack(*entries, XHPROF_G(sampling_depth), symbol, sizeof(symbol));
 
     add_assoc_string(&XHPROF_G(stats_count), key, symbol);
-
-    efree(symbol);
 }
 
 /**
@@ -1012,7 +1013,7 @@ void hp_mode_hier_endfn_cb(hp_entry_t **entries)
 {
     hp_entry_t      *top = (*entries);
     zval            *counts;
-    char            *symbol;
+    char            symbol[SCRATCH_BUF_LEN];
     long int        mu_end;
     long int        pmu_end;
     double          wt, cpu;
@@ -1021,7 +1022,7 @@ void hp_mode_hier_endfn_cb(hp_entry_t **entries)
     wt = cycle_timer() - top->tsc_start;
 
     /* Get the stat array */
-    symbol = hp_get_function_stack(top, 2);
+    hp_get_function_stack(top, 2, symbol, sizeof(symbol));
 
     counts = zend_hash_str_find(Z_ARRVAL(XHPROF_G(stats_count)), symbol, strlen(symbol));
 
@@ -1051,8 +1052,6 @@ void hp_mode_hier_endfn_cb(hp_entry_t **entries)
         hp_inc_count(counts, "mu",  mu_end - top->mu_start_hprof);
         hp_inc_count(counts, "pmu", pmu_end - top->pmu_start_hprof);
     }
-
-    efree(symbol);
 
     XHPROF_G(func_hash_counters[top->hash_code])--;
 }
