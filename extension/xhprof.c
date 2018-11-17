@@ -1501,6 +1501,11 @@ char* hp_trace_callback_pdo_statement_execute(char *symbol, zend_execute_data *d
         return result;
 #endif
 
+        if (ZEND_CALL_NUM_ARGS(data) < 1) {
+            spprintf(&result, 0, "%s#%s", symbol, Z_STRVAL_P(query_string));
+            return result;
+        }
+
         arg = ZEND_CALL_ARG(data, 1);
         if (Z_TYPE_P(arg) != IS_ARRAY) {
             spprintf(&result, 0, "%s#%s", symbol, Z_STRVAL_P(query_string));
