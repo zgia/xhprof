@@ -22,5 +22,4 @@ before_script:
   - make
 
 script:
-  - cd ..
-  - ./travis/run-test.sh
+  - ../travis/run-test.sh
