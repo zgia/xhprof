@@ -31,10 +31,11 @@ xhprof.output_dir = /tmp/xhprof
 |      Options        |  Defaults  |  Version  |  Explain  |
 | --------------- |:-------------:|:-------------:|:---------|
 |xhprof.output_dir  | "" | All |Output directory|
-|xhprof.sampling_interval  | 100000 | v2.* | Sampling interval to be used by the sampling profiler, in microseconds|
-|xhprof.sampling_depth  | INT_MAX | v2.* | Depth to trace call-chain by the sampling profiler|
+|xhprof.sampling_interval  | 100000 | >= v2.* | Sampling interval to be used by the sampling profiler, in microseconds|
+|xhprof.sampling_depth  | INT_MAX | >= v2.* | Depth to trace call-chain by the sampling profiler|
+|xhprof.collect_additional_info  | 0 | >= v2.1 | Collect mysql_query, curl_exec internal info. The default is 0. Open value is 1|
 
-# Added
+# Turn on extra collection
 ### PDO::exec
 ### PDO::query
 ### mysqli_query
