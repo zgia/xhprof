@@ -103,6 +103,13 @@ PHP_INI_BEGIN()
  * directory specified by this ini setting.
  */
 PHP_INI_ENTRY("xhprof.output_dir", "", PHP_INI_ALL, NULL)
+
+/*
+ * collect_additional_info
+ * Collect mysql_query, curl_exec internal info. The default is 0.
+ */
+PHP_INI_ENTRY("xhprof.collect_additional_info", "0", PHP_INI_ALL, NULL)
+
 /* sampling_interval:
  * Sampling interval to be used by the sampling profiler, in microseconds.
  */
@@ -1609,9 +1616,13 @@ char *hp_get_trace_callback(char* symbol, zend_execute_data *data)
     char *result;
     hp_trace_callback *callback;
 
-    callback = (hp_trace_callback*)zend_hash_str_find_ptr(XHPROF_G(trace_callbacks), symbol, strlen(symbol));
-    if (callback) {
-        result = (*callback)(symbol, data);
+    if (XHPROF_G(trace_callbacks)) {
+        callback = (hp_trace_callback*)zend_hash_str_find_ptr(XHPROF_G(trace_callbacks), symbol, strlen(symbol));
+        if (callback) {
+            result = (*callback)(symbol, data);
+        } else {
+            return symbol;
+        }
     } else {
         return symbol;
     }
@@ -1628,6 +1639,10 @@ static inline void hp_free_trace_callbacks(zval *val) {
 void hp_init_trace_callbacks()
 {
     hp_trace_callback callback;
+
+    if (INI_INT("xhprof.collect_additional_info") == 0) {
+        return;
+    }
 
     if (XHPROF_G(trace_callbacks)) {
         return;
