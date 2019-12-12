@@ -24,10 +24,16 @@
 #include "ext/standard/info.h"
 #include "php_xhprof.h"
 #include "zend_extensions.h"
-#include <sys/time.h>
-#include <sys/resource.h>
+#ifndef ZEND_WIN32
+# include <sys/time.h>
+# include <sys/resource.h>
+# include <unistd.h>
+#else
+# include "win32/time.h"
+# include "win32/getrusage.h"
+# include "win32/unistd.h"
+#endif
 #include <stdlib.h>
-#include <unistd.h>
 
 #if HAVE_PCRE
 #include "ext/pcre/php_pcre.h"
@@ -36,6 +42,10 @@
 #if __APPLE__
 #include <mach/mach_init.h>
 #include <mach/mach_time.h>
+#endif
+
+#ifdef ZEND_WIN32
+LARGE_INTEGER performance_frequency;
 #endif
 
 ZEND_DECLARE_MODULE_GLOBALS(xhprof)
@@ -267,6 +277,10 @@ PHP_MINIT_FUNCTION(xhprof)
 #if defined(DEBUG)
     /* To make it random number generator repeatable to ease testing. */
     srand(0);
+#endif
+
+#ifdef ZEND_WIN32
+    QueryPerformanceFrequency(&performance_frequency); 
 #endif
     return SUCCESS;
 }
@@ -853,6 +867,12 @@ static inline uint64 cycle_timer()
 {
 #if defined(__APPLE__) && defined(__MACH__)
     return mach_absolute_time() / XHPROF_G(timebase_conversion);
+#elif defined(ZEND_WIN32)
+    LARGE_INTEGER lt = {0};
+    QueryPerformanceCounter(&lt);
+    lt.QuadPart *= 1000000;
+    lt.QuadPart /= performance_frequency.QuadPart;
+    return lt.QuadPart;
 #else
     struct timespec s;
     clock_gettime(CLOCK_MONOTONIC, &s);
