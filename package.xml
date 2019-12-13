@@ -69,6 +69,7 @@
    <file md5sum="73b1ed842bd69921bb4b290aa0bf81b7" name="extension/tests/xhprof_007.phpt" role="test" />
    <file md5sum="36370336430b77fb238d65b392ebe736" name="extension/tests/xhprof_008.phpt" role="test" />
    <file md5sum="f7803d89ac5bcf1aa29cf001d05215b8" name="extension/config.m4" role="src" />
+   <file md5sum="dae5874eca040b26dbf06d2884d02267" name="extension/config.w32" role="src" />
    <file md5sum="8cf63963b5febf7d27221aeb8c0737b9" name="extension/php_xhprof.h" role="src" />
    <file md5sum="45396bac2b65705dc8cc2da520915c96" name="extension/xhprof.c" role="src" />
    <file md5sum="4bdc15b68407d8c532cecf0e11c192e1" name="xhprof_html/css/xhprof.css" role="src" />
