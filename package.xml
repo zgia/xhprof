@@ -40,11 +40,11 @@
   <email>longxinhui@php.net</email>
   <active>yes</active>
  </lead>
- <date>2019-12-10</date>
- <time>11:06:00</time>
+ <date>2019-12-17</date>
+ <time>01:06:00</time>
  <version>
-  <release>2.1.3</release>
-  <api>2.1.3</api>
+  <release>2.1.4</release>
+  <api>2.1.4</api>
  </version>
  <stability>
   <release>stable</release>
@@ -52,7 +52,7 @@
  </stability>
  <license uri="http://www.apache.org/licenses/LICENSE-2.0.html">Apache 2.0</license>
  <notes>
- - Fix s390x accuracy loss #15
+ - Windows support #34
  </notes>
  <contents>
   <dir name="/">
@@ -113,6 +113,20 @@
  <providesextension>xhprof</providesextension>
  <extsrcrelease />
  <changelog>
+<release> 
+   <date>2019-12-17</date> 
+   <version> 
+    <release>2.1.4</release> 
+    <api>2.1.4</api> 
+   </version> 
+   <stability> 
+    <release>stable</release> 
+    <api>stable</api> 
+   </stability>
+   <notes>
+    - Windows support #34
+   </notes> 
+  </release>
   <release> 
    <date>2019-12-10</date> 
    <version> 

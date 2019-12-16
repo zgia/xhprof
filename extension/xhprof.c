@@ -158,7 +158,7 @@ PHP_INI_END()
  */
 PHP_FUNCTION(xhprof_enable)
 {
-    long  xhprof_flags = 0;              /* XHProf flags */
+    zend_long  xhprof_flags = 0;              /* XHProf flags */
     zval *optional_array = NULL;         /* optional array arg: for future use */
 
     if (zend_parse_parameters(ZEND_NUM_ARGS(), "|lz", &xhprof_flags, &optional_array) == FAILURE) {
@@ -195,7 +195,7 @@ PHP_FUNCTION(xhprof_disable)
  */
 PHP_FUNCTION(xhprof_sample_enable)
 {
-    long xhprof_flags = 0;    /* XHProf flags */
+    zend_long xhprof_flags = 0;    /* XHProf flags */
     hp_get_ignored_functions_from_arg(NULL);
     hp_begin(XHPROF_MODE_SAMPLED, xhprof_flags);
 }
@@ -754,7 +754,7 @@ static void hp_fast_free_hprof_entry(hp_entry_t *p)
  * @return void
  * @author kannan
  */
-void hp_inc_count(zval *counts, char *name, long count)
+void hp_inc_count(zval *counts, char *name, zend_long count)
 {
     HashTable *ht;
     zval *data, val;
@@ -789,9 +789,9 @@ void hp_inc_count(zval *counts, char *name, long count)
  * @return void
  * @author veeve
  */
-void hp_trunc_time(struct timeval *tv, uint64 intr)
+void hp_trunc_time(struct timeval *tv, zend_ulong intr)
 {
-    uint64 time_in_micro;
+    zend_ulong time_in_micro;
 
     /* Convert to microsecs and trunc that first */
     time_in_micro = (tv->tv_sec * 1000000) + tv->tv_usec;
@@ -817,7 +817,7 @@ void hp_sample_stack(hp_entry_t  **entries)
     char symbol[SCRATCH_BUF_LEN * 1000];
 
     /* Build key */
-    snprintf(key, sizeof(key), "%d.%06d", XHPROF_G(last_sample_time).tv_sec, XHPROF_G(last_sample_time).tv_usec);
+    snprintf(key, sizeof(key), "%d.%06d", (uint32) XHPROF_G(last_sample_time).tv_sec, (uint32) XHPROF_G(last_sample_time).tv_usec);
 
     /* Init stats in the global stats_count hashtable */
     hp_get_function_stack(*entries, XHPROF_G(sampling_depth), symbol, sizeof(symbol));
@@ -863,7 +863,7 @@ void hp_sample_check(hp_entry_t **entries)
  * ***********************
  */
 
-static inline uint64 cycle_timer()
+static inline zend_ulong cycle_timer()
 {
 #if defined(__APPLE__) && defined(__MACH__)
     return mach_absolute_time() / XHPROF_G(timebase_conversion);
@@ -884,7 +884,7 @@ static inline uint64 cycle_timer()
 /**
  * Get the current real CPU clock timer
  */
-static uint64 cpu_timer()
+static zend_ulong cpu_timer()
 {
 #if defined(CLOCK_PROCESS_CPUTIME_ID)
     struct timespec s;
@@ -902,7 +902,7 @@ static uint64 cpu_timer()
 /**
  * Incr time with the given microseconds.
  */
-static void incr_us_interval(struct timeval *start, uint64 incr)
+static void incr_us_interval(struct timeval *start, zend_ulong incr)
 {
     incr += (start->tv_sec * 1000000 + start->tv_usec);
     start->tv_sec  = incr / 1000000;
@@ -1266,7 +1266,7 @@ ZEND_DLEXPORT zend_op_array* hp_compile_string(zval *source_string, char *filena
  * It replaces all the functions like zend_execute, zend_execute_internal,
  * etc that needs to be instrumented with their corresponding proxies.
  */
-static void hp_begin(long level, long xhprof_flags)
+static void hp_begin(zend_long level, zend_long xhprof_flags)
 {
     if (!XHPROF_G(enabled)) {
         int hp_profile_flag = 1;

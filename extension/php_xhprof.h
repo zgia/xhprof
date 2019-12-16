@@ -39,7 +39,7 @@ extern zend_module_entry xhprof_module_entry;
  */
 
 /* XHProf version                           */
-#define XHPROF_VERSION       "2.1.3"
+#define XHPROF_VERSION       "2.1.4"
 
 /* Fictitious function name to represent top of the call tree. The paranthesis
  * in the name is to ensure we don't conflict with user function names.  */
@@ -71,10 +71,6 @@ extern zend_module_entry xhprof_module_entry;
 #define XHPROF_MAX_IGNORED_FUNCTIONS  256
 #define XHPROF_IGNORED_FUNCTION_FILTER_SIZE                           \
                ((XHPROF_MAX_IGNORED_FUNCTIONS + 7)/8)
-
-#if !defined(uint64)
-    typedef unsigned long long uint64;
-#endif
 
 #if !defined(uint32)
     typedef unsigned int uint32;
@@ -154,8 +150,8 @@ do {                                                                    \
 typedef struct hp_entry_t {
     char                   *name_hprof;                       /* function name */
     int                     rlvl_hprof;        /* recursion level for function */
-    uint64                  tsc_start;         /* start value for TSC counter  */
-    uint64                  cpu_start;
+    zend_ulong              tsc_start;         /* start value for TSC counter  */
+    zend_ulong              cpu_start;
     long int                mu_start_hprof;                    /* memory usage */
     long int                pmu_start_hprof;              /* peak memory usage */
     struct hp_entry_t      *prev_hprof;    /* ptr to prev entry being profiled */
@@ -203,17 +199,17 @@ ZEND_DLEXPORT zend_op_array* hp_compile_string(zval *source_string, char *filena
  */
 static void hp_register_constants(INIT_FUNC_ARGS);
 
-static void hp_begin(long level, long xhprof_flags);
+static void hp_begin(zend_long level, zend_long xhprof_flags);
 static void hp_stop();
 static void hp_end();
 
-static inline uint64 cycle_timer();
+static inline zend_ulong cycle_timer();
 
 static void hp_free_the_free_list();
 static hp_entry_t *hp_fast_alloc_hprof_entry();
 static void hp_fast_free_hprof_entry(hp_entry_t *p);
 static inline uint8 hp_inline_hash(char *str);
-static void incr_us_interval(struct timeval *start, uint64 incr);
+static void incr_us_interval(struct timeval *start, zend_ulong incr);
 
 static void hp_get_ignored_functions_from_arg(zval *args);
 
@@ -270,11 +266,11 @@ ZEND_BEGIN_MODULE_GLOBALS(xhprof)
 
     /* Global to track the time of the last sample in time and ticks */
     struct timeval   last_sample_time;
-    uint64           last_sample_tsc;
+    zend_ulong       last_sample_tsc;
     /* XHPROF_SAMPLING_INTERVAL in ticks */
-    long             sampling_interval;
-    uint64           sampling_interval_tsc;
-    long             sampling_depth;
+    zend_long        sampling_interval;
+    zend_ulong       sampling_interval_tsc;
+    zend_long        sampling_depth;
     /* XHProf flags */
     uint32 xhprof_flags;
 
