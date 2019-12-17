@@ -47,8 +47,8 @@
   <api>2.1.4</api>
  </version>
  <stability>
-  <release>stable</release>
-  <api>stable</api>
+  <release>beta</release>
+  <api>beta</api>
  </stability>
  <license uri="http://www.apache.org/licenses/LICENSE-2.0.html">Apache 2.0</license>
  <notes>
@@ -120,8 +120,8 @@
     <api>2.1.4</api> 
    </version> 
    <stability> 
-    <release>stable</release> 
-    <api>stable</api> 
+    <release>beta</release> 
+    <api>beta</api> 
    </stability>
    <notes>
     - Windows support #34
