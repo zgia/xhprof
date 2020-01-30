@@ -37,6 +37,11 @@ xhprof.output_dir = /tmp/xhprof
 |xhprof.collect_additional_info  | 0 | >= v2.1 | Collect mysql_query, curl_exec internal info. The default is 0. Open value is 1|
 
 # Turn on extra collection
+#### php.ini adds xhprof.collect_additional_info
+```sh
+xhprof.collect_additional_info = 1
+````
+
 ### PDO::exec
 ### PDO::query
 ### mysqli_query
