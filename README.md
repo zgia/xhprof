@@ -41,6 +41,32 @@ xhprof.output_dir = /tmp/xhprof
 ```sh
 xhprof.collect_additional_info = 1
 ````
+# Options
+```php
+xhprof_enable(XHPROF_FLAGS_NO_BUILTINS | XHPROF_FLAGS_CPU | XHPROF_FLAGS_MEMORY);
+```
+- `XHPROF_FLAGS_NO_BUILTINS` do not profile builtins
+- `XHPROF_FLAGS_CPU` gather CPU times for funcs
+- `XHPROF_FLAGS_MEMORY` gather memory usage for funcs
+
+Example
+```php
+<?php
+
+array(
+    "main()" => array(
+        "wt" => 237,
+        "ct" => 1,
+        "cpu" => 100,
+    )
+)
+```
+
+- `wt` The number of times the function was called
+- `ct` The execution time of a function method is time consuming
+- `cpu` The CPU time consumed by the function method execution
+- `mu` Memory used by function methods. The call is zend_memory_usage to get the memory usage
+- `pmu` Peak memory used by the function method. The call is zend_memory_peak_usage to get the memory
 
 ### PDO::exec
 ### PDO::query
