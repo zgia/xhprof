@@ -118,7 +118,7 @@ PHP_INI_ENTRY("xhprof.output_dir", "", PHP_INI_ALL, NULL)
  * collect_additional_info
  * Collect mysql_query, curl_exec internal info. The default is 0.
  */
-PHP_INI_ENTRY("xhprof.collect_additional_info", "0", PHP_INI_ALL, NULL)
+STD_PHP_INI_ENTRY("xhprof.collect_additional_info", "0", PHP_INI_ALL, OnUpdateBool, collect_additional_info, zend_xhprof_globals, xhprof_globals)
 
 /* sampling_interval:
  * Sampling interval to be used by the sampling profiler, in microseconds.
@@ -158,7 +158,7 @@ PHP_INI_END()
  */
 PHP_FUNCTION(xhprof_enable)
 {
-    zend_long  xhprof_flags = 0;              /* XHProf flags */
+    zend_long xhprof_flags = 0;              /* XHProf flags */
     zval *optional_array = NULL;         /* optional array arg: for future use */
 
     if (zend_parse_parameters(ZEND_NUM_ARGS(), "|lz", &xhprof_flags, &optional_array) == FAILURE) {
@@ -236,7 +236,7 @@ static void php_xhprof_init_globals(zend_xhprof_globals *xhprof_globals)
 
     int i;
 
-    for (i = 0; i < 256; i++) {
+    for (i = 0; i < XHPROF_FUNC_HASH_COUNTERS_SIZE; i++) {
         xhprof_globals->func_hash_counters[i] = 0;
     }
 
@@ -362,33 +362,6 @@ static void hp_register_constants(INIT_FUNC_ARGS)
 }
 
 /**
- * A hash function to calculate a 8-bit hash code for a function name.
- * This is based on a small modification to 'zend_inline_hash_func' by summing
- * up all bytes of the zend_ulong returned by 'zend_inline_hash_func'.
- *
- * @param str, char *, string to be calculated hash code for.
- *
- * @author cjiang
- */
-static inline uint8 hp_inline_hash(char * str)
-{
-    zend_ulong h = 5381;
-    uint32 i = 0;
-    uint8 res = 0;
-
-    while (*str) {
-        h += (h << 5);
-        h ^= (zend_ulong) *str++;
-    }
-
-    for (i = 0; i < sizeof(zend_ulong); i++) {
-        res += ((uint8 *)&h)[i];
-    }
-
-    return res;
-}
-
-/**
  * Parse the list of ignored functions from the zval argument.
  *
  * @author mpal
@@ -399,9 +372,8 @@ void hp_get_ignored_functions_from_arg(zval *args)
         return;
     }
 
-    zval *pzval;
-    pzval = hp_zval_at_key("ignored_functions", args);
-    XHPROF_G(ignored_functions) = hp_ignored_functions_init(hp_strings_in_zval(pzval));
+    zval *pzval = zend_hash_str_find(Z_ARRVAL_P(args), "ignored_functions", sizeof("ignored_functions") - 1);
+    XHPROF_G(ignored_functions) = hp_ignored_functions_init(pzval);
 }
 
 void hp_ignored_functions_clear(hp_ignored_functions *functions)
@@ -413,7 +385,7 @@ void hp_ignored_functions_clear(hp_ignored_functions *functions)
     hp_array_del(functions->names);
     functions->names = NULL;
 
-    memset(functions->filter, 0, XHPROF_IGNORED_FUNCTION_FILTER_SIZE);
+    memset(functions->filter, 0, XHPROF_MAX_IGNORED_FUNCTIONS);
     efree(functions);
 }
 
@@ -429,28 +401,61 @@ double get_timebase_conversion()
     return 1.0;
 }
 
-hp_ignored_functions *hp_ignored_functions_init(char **names)
+hp_ignored_functions *hp_ignored_functions_init(zval *values)
 {
+    hp_ignored_functions *functions;
+    zend_string **names;
+    uint32_t ix = 0;
+    int count;
+
     /* Delete the array storing ignored function names */
     hp_ignored_functions_clear(XHPROF_G(ignored_functions));
 
-    if (names == NULL) {
+    if (!values) {
         return NULL;
     }
 
-    hp_ignored_functions *functions;
+    if (Z_TYPE_P(values) == IS_ARRAY) {
+        HashTable *ht;
+        zend_ulong num_key;
+        zend_string *key;
+        zval *val;
+
+        ht = Z_ARRVAL_P(values);
+        count = zend_hash_num_elements(ht);
+
+        names = ecalloc(count + 1, sizeof(zend_string *));
+
+        ZEND_HASH_FOREACH_KEY_VAL(ht, num_key, key, val) {
+            if (!key) {
+                if (Z_TYPE_P(val) == IS_STRING && strcmp(Z_STRVAL_P(val), ROOT_SYMBOL) != 0) {
+                    /* do not ignore "main" */
+                    names[ix] = zend_string_init(Z_STRVAL_P(val), Z_STRLEN_P(val), 0);
+                    ix++;
+                }
+            }
+        } ZEND_HASH_FOREACH_END();
+    } else if (Z_TYPE_P(values) == IS_STRING) {
+        names = ecalloc(2, sizeof(zend_string *));
+        names[0] = zend_string_init(Z_STRVAL_P(values), Z_STRLEN_P(values), 0);
+        ix = 1;
+    } else {
+        return NULL;
+    }
+
+    /* NULL terminate the array */
+    names[ix] = NULL;
 
     functions = emalloc(sizeof(hp_ignored_functions));
     functions->names = names;
 
-    memset(functions->filter, 0, XHPROF_IGNORED_FUNCTION_FILTER_SIZE);
+    memset(functions->filter, 0, XHPROF_MAX_IGNORED_FUNCTIONS);
 
-    int i = 0;
-    for(; names[i] != NULL; i++) {
-        char *str  = names[i];
-        uint8 hash = hp_inline_hash(str);
-        int   idx  = INDEX_2_BYTE(hash);
-        functions->filter[idx] |= INDEX_2_BIT(hash);
+    uint32_t i = 0;
+    for (; names[i] != NULL; i++) {
+        zend_ulong hash = ZSTR_HASH(names[i]);
+        int idx = hash % XHPROF_MAX_IGNORED_FUNCTIONS;
+        functions->filter[idx] = hash;
     }
 
     return functions;
@@ -461,10 +466,10 @@ hp_ignored_functions *hp_ignored_functions_init(char **names)
  *
  * @author mpal
  */
-int hp_ignored_functions_filter_collision(hp_ignored_functions *functions, uint8 hash)
+int hp_ignored_functions_filter_collision(hp_ignored_functions *functions, zend_ulong hash)
 {
-    uint8 mask = INDEX_2_BIT(hash);
-    return functions->filter[INDEX_2_BYTE(hash)] & mask;
+    zend_ulong idx = hash % XHPROF_MAX_IGNORED_FUNCTIONS;
+    return functions->filter[idx];
 }
 
 /**
@@ -540,9 +545,9 @@ size_t hp_get_entry_name(hp_entry_t *entry, char *result_buf, size_t result_len)
     /* Add '@recurse_level' if required */
     /* NOTE:  Dont use snprintf's return val as it is compiler dependent */
     if (entry->rlvl_hprof) {
-        len = snprintf(result_buf, result_len, "%s@%d", entry->name_hprof, entry->rlvl_hprof);
+        len = snprintf(result_buf, result_len, "%s@%d", ZSTR_VAL(entry->name_hprof), entry->rlvl_hprof);
     } else {
-        len = snprintf(result_buf, result_len, "%s", entry->name_hprof);
+        len = snprintf(result_buf, result_len, "%s", ZSTR_VAL(entry->name_hprof));
     }
 
     return len;
@@ -554,7 +559,7 @@ size_t hp_get_entry_name(hp_entry_t *entry, char *result_buf, size_t result_len)
  *
  * @author mpal
  */
-int hp_ignore_entry_work(uint8 hash_code, char *curr_func)
+int hp_ignore_entry_work(zend_ulong hash_code, zend_string *curr_func)
 {
     if (XHPROF_G(ignored_functions) == NULL) {
         return 0;
@@ -565,8 +570,8 @@ int hp_ignore_entry_work(uint8 hash_code, char *curr_func)
     if (hp_ignored_functions_filter_collision(functions, hash_code)) {
         int i = 0;
         for (; functions->names[i] != NULL; i++) {
-            char *name = functions->names[i];
-            if (strcmp(curr_func, name) == 0) {
+            zend_string *name = functions->names[i];
+            if (zend_string_equals(curr_func, name)) {
                 return 1;
             }
         }
@@ -658,12 +663,11 @@ static const char *hp_get_base_filename(const char *filename)
  *
  * @author kannan, hzhao
  */
-static char *hp_get_function_name(zend_execute_data *execute_data)
+static zend_string *hp_get_function_name(zend_execute_data *execute_data)
 {
-    const char        *cls = NULL;
-    char              *ret;
-    zend_function     *curr_func;
-    zend_string       *func = NULL;
+    zend_string *ret;
+    zend_function *curr_func;
+    zend_string *func = NULL;
 
     if (!execute_data) {
         return NULL;
@@ -679,11 +683,9 @@ static char *hp_get_function_name(zend_execute_data *execute_data)
     }
 
     if (curr_func->common.scope != NULL) {
-        char *sep = "::";
-        cls = curr_func->common.scope->name->val;
-        spprintf(&ret, 0, "%s%s%s", cls, sep, func->val);
+        ret = strpprintf(0, "%s::%s", curr_func->common.scope->name->val, ZSTR_VAL(func));
     } else {
-        spprintf(&ret, 0, "%s", ZSTR_VAL(func));
+        ret = zend_string_init(ZSTR_VAL(func), ZSTR_LEN(func), 0);
     }
 
     return ret;
@@ -704,8 +706,6 @@ static void hp_free_the_free_list()
     }
 }
 
-
-
 /**
  * Fast allocate a hp_entry_t structure. Picks one from the
  * free list if available, else does an actual allocate.
@@ -724,7 +724,7 @@ static hp_entry_t *hp_fast_alloc_hprof_entry()
         XHPROF_G(entry_free_list) = p->prev_hprof;
         return p;
     } else {
-        return (hp_entry_t *) malloc(sizeof(hp_entry_t));
+        return (hp_entry_t *)malloc(sizeof(hp_entry_t));
     }
 }
 
@@ -961,7 +961,7 @@ void hp_mode_common_beginfn(hp_entry_t **entries, hp_entry_t *current)
     if (XHPROF_G(func_hash_counters[current->hash_code]) > 0) {
         /* Find this symbols recurse level */
         for (p = (*entries); p; p = p->prev_hprof) {
-            if (!strcmp(current->name_hprof, p->name_hprof)) {
+            if (zend_string_equals(current->name_hprof, p->name_hprof)) {
                 recurse_level = (p->rlvl_hprof) + 1;
                 break;
             }
@@ -1130,7 +1130,7 @@ ZEND_DLEXPORT void hp_execute_ex (zend_execute_data *execute_data)
         return;
     }
 
-    char *func = NULL;
+    zend_string *func;
     int hp_profile_flag = 1;
 
     func = hp_get_function_name(execute_data);
@@ -1150,7 +1150,7 @@ ZEND_DLEXPORT void hp_execute_ex (zend_execute_data *execute_data)
         END_PROFILING(&XHPROF_G(entries), hp_profile_flag);
     }
 
-    efree(func);
+    zend_string_release(func);
 }
 
 /**
@@ -1167,7 +1167,7 @@ ZEND_DLEXPORT void hp_execute_internal(zend_execute_data *execute_data, zval *re
         return;
     }
 
-    char *func = NULL;
+    zend_string *func;
     int hp_profile_flag = 1;
 
     func = hp_get_function_name(execute_data);
@@ -1188,7 +1188,7 @@ ZEND_DLEXPORT void hp_execute_internal(zend_execute_data *execute_data, zval *re
         if (XHPROF_G(entries)) {
             END_PROFILING(&XHPROF_G(entries), hp_profile_flag);
         }
-        efree(func);
+        zend_string_release(func);
     }
 
 }
@@ -1204,16 +1204,13 @@ ZEND_DLEXPORT zend_op_array* hp_compile_file(zend_file_handle *file_handle, int 
         return _zend_compile_file(file_handle, type);
     }
 
-    const char     *filename;
-    char           *func;
-    int            len;
-    zend_op_array  *ret;
-    int            hp_profile_flag = 1;
+    const char *filename;
+    zend_string *func;
+    zend_op_array *ret;
+    int hp_profile_flag = 1;
 
     filename = hp_get_base_filename(file_handle->filename);
-    len      = strlen("load") + strlen(filename) + 3;
-    func     = (char *)emalloc(len);
-    snprintf(func, len, "load::%s", filename);
+    func = strpprintf(0, "load::%s", filename);
 
     BEGIN_PROFILING(&XHPROF_G(entries), func, hp_profile_flag, NULL);
     ret = _zend_compile_file(file_handle, type);
@@ -1222,7 +1219,7 @@ ZEND_DLEXPORT zend_op_array* hp_compile_file(zend_file_handle *file_handle, int 
         END_PROFILING(&XHPROF_G(entries), hp_profile_flag);
     }
 
-    efree(func);
+    zend_string_release(func);
     return ret;
 }
 
@@ -1235,14 +1232,11 @@ ZEND_DLEXPORT zend_op_array* hp_compile_string(zval *source_string, char *filena
         return _zend_compile_string(source_string, filename);
     }
 
-    char          *func;
-    int           len;
+    zend_string *func;
     zend_op_array *ret;
-    int           hp_profile_flag = 1;
+    int hp_profile_flag = 1;
 
-    len  = strlen("eval") + strlen(filename) + 3;
-    func = (char *)emalloc(len);
-    snprintf(func, len, "eval::%s", filename);
+    func = strpprintf(0, "eval::%s", filename);
 
     BEGIN_PROFILING(&XHPROF_G(entries), func, hp_profile_flag, NULL);
     ret = _zend_compile_string(source_string, filename);
@@ -1251,7 +1245,7 @@ ZEND_DLEXPORT zend_op_array* hp_compile_string(zval *source_string, char *filena
         END_PROFILING(&XHPROF_G(entries), hp_profile_flag);
     }
 
-    efree(func);
+    zend_string_release(func);
     return ret;
 }
 
@@ -1299,7 +1293,7 @@ static void hp_begin(zend_long level, zend_long xhprof_flags)
         hp_init_profiler_state(level);
 
         /* start profiling from fictitious main() */
-        XHPROF_G(root) = estrdup(ROOT_SYMBOL);
+        XHPROF_G(root) = zend_string_init(ROOT_SYMBOL, sizeof(ROOT_SYMBOL) - 1, 0);
 
         /* start profiling from fictitious main() */
         BEGIN_PROFILING(&XHPROF_G(entries), XHPROF_G(root), hp_profile_flag, NULL);
@@ -1331,7 +1325,7 @@ static void hp_end()
  */
 static void hp_stop()
 {
-    int   hp_profile_flag = 1;
+    int hp_profile_flag = 1;
 
     /* End any unfinished calls */
     while (XHPROF_G(entries)) {
@@ -1339,8 +1333,7 @@ static void hp_stop()
     }
 
     if (XHPROF_G(root)) {
-        efree(XHPROF_G(root));
-        XHPROF_G(root) = NULL;
+        zend_string_release(XHPROF_G(root));
     }
 
     /* Stop profiling */
@@ -1354,262 +1347,170 @@ static void hp_stop()
  * *****************************
  */
 
-/** Look in the PHP assoc array to find a key and return the zval associated
- *  with it.
- *
- *  @author mpal
- **/
-static zval *hp_zval_at_key(char  *key, zval *values)
+///* Free this memory at the end of profiling */
+static inline void hp_array_del(zend_string **names)
 {
-    zval *result = NULL;
-
-    if (Z_TYPE_P(values) == IS_ARRAY) {
-        HashTable *ht;
-        uint32 len = strlen(key);
-
-        result = zend_hash_str_find(Z_ARRVAL_P(values), key, len);
-    }
-
-    return result;
-}
-
-/** Convert the PHP array of strings to an emalloced array of strings. Note,
- *  this method duplicates the string data in the PHP array.
- *
- *  @author mpal
- **/
-static char **hp_strings_in_zval(zval  *values)
-{
-    char   **result;
-    size_t   count;
-    size_t   ix = 0;
-
-    if (!values) {
-        return NULL;
-    }
-
-    if (Z_TYPE_P(values) == IS_ARRAY) {
-
-        HashTable *ht;
-        zend_ulong num_key;
-        zend_string *key;
-        zval *val;
-
-        ht    = Z_ARRVAL_P(values);
-        count = zend_hash_num_elements(ht);
-
-        if((result = (char**) emalloc(sizeof(char*) * (count + 1))) == NULL) {
-            return result;
-        }
-
-        ZEND_HASH_FOREACH_KEY_VAL(ht, num_key, key, val) {
-            if (!key) {
-                if (Z_TYPE_P(val) == IS_STRING && strcmp(Z_STRVAL_P(val), ROOT_SYMBOL) != 0) {
-                    /* do not ignore "main" */
-                    result[ix] = estrdup(Z_STRVAL_P(val));
-                    ix++;
-                }
-            }
-        } ZEND_HASH_FOREACH_END();
-
-    } else if (Z_TYPE_P(values) == IS_STRING) {
-        if ((result = (char**) emalloc(sizeof(char*) * 2)) == NULL) {
-            return result;
-        }
-        result[0] = estrdup(Z_STRVAL_P(values));
-        ix = 1;
-    } else {
-        result = NULL;
-    }
-
-    /* NULL terminate the array */
-    if (result != NULL) {
-        result[ix] = NULL;
-    }
-
-    return result;
-}
-
-/* Free this memory at the end of profiling */
-static inline void hp_array_del(char **name_array)
-{
-    if (name_array != NULL) {
+    if (names != NULL) {
         int i = 0;
-        for(; name_array[i] != NULL && i < XHPROF_MAX_IGNORED_FUNCTIONS; i++) {
-            efree(name_array[i]);
+        for (; names[i] != NULL && i < XHPROF_MAX_IGNORED_FUNCTIONS; i++) {
+            zend_string_release(names[i]);
         }
 
-        efree(name_array);
+        efree(names);
     }
 }
 
-zend_string *hp_pcre_match(char *pattern, int len, zval *data, zend_ulong idx)
+int hp_pcre_match(zend_string *pattern, const char *str, size_t len, zend_ulong idx)
 {
-    zval matches, *match;
-    zval rsubparts, *subparts;
+    zval *match;
     pcre_cache_entry *pce_regexp;
-    zend_string *pattern_str, *result = NULL;
 
-    pattern_str = zend_string_init(pattern, len, 0);
-    if ((pce_regexp = pcre_get_compiled_regex_cache(pattern_str)) == NULL) {
-        zend_string_release(pattern_str);
-        return NULL;
-    }
+    if ((pce_regexp = pcre_get_compiled_regex_cache(pattern)) == NULL) {
+        return 0;
+    } else {
+        zval matches, subparts;
 
-    ZVAL_NULL(&rsubparts);
-    subparts = &rsubparts;
+        ZVAL_NULL(&subparts);
 
 #if PHP_VERSION_ID < 70400
-    php_pcre_match_impl(pce_regexp, Z_STRVAL_P(data), Z_STRLEN_P(data), &matches, subparts /* subpats */,
+        php_pcre_match_impl(pce_regexp, (char*)str, len, &matches, &subparts /* subpats */,
                         0/* global */, 0/* ZEND_NUM_ARGS() >= 4 */, 0/*flags PREG_OFFSET_CAPTURE*/, 0/* start_offset */);
 #else
-    php_pcre_match_impl(pce_regexp, Z_STR_P(data), &matches, subparts /* subpats */,
-                        0/* global */, 0/* ZEND_NUM_ARGS() >= 4 */, 0/*flags PREG_OFFSET_CAPTURE*/, 0/* start_offset */);
+        zend_string *tmp = zend_string_init(str, len, 0);
+        php_pcre_match_impl(pce_regexp, tmp, &matches, &subparts /* subpats */,
+                            0/* global */, 0/* ZEND_NUM_ARGS() >= 4 */, 0/*flags PREG_OFFSET_CAPTURE*/, 0/* start_offset */);
+        zend_string_release(tmp);
 #endif
 
-    if (zend_hash_num_elements(Z_ARRVAL_P(subparts))) {
-        match = zend_hash_index_find(Z_ARRVAL_P(subparts), idx);
-
-        if (match != NULL) {
-            result = zend_string_init(Z_STRVAL_P(match), Z_STRLEN_P(match), 0);
+        if (!zend_hash_num_elements(Z_ARRVAL(subparts))) {
+            zval_ptr_dtor(&subparts);
+            return 0;
         }
+
+        zval_ptr_dtor(&subparts);
+
+        return 1;
     }
-
-    zend_string_release(pattern_str);
-    zval_ptr_dtor(&matches);
-    zval_ptr_dtor(subparts);
-
-    return result;
 }
 
-zend_string *hp_pcre_replace(char *pattern, int len, zval *repl, zval *data, int limit)
+zend_string *hp_pcre_replace(zend_string *pattern, zend_string *repl, zval *data, int limit)
 {
     pcre_cache_entry *pce_regexp;
-    zend_string *pattern_str, *replace;
+    zend_string *replace;
 
-    pattern_str = zend_string_init(pattern, len, 0);
-
-    if ((pce_regexp = pcre_get_compiled_regex_cache(pattern_str)) == NULL) {
+    if ((pce_regexp = pcre_get_compiled_regex_cache(pattern)) == NULL) {
         return NULL;
     }
-
-    zend_string_release(pattern_str);
 
 #if PHP_VERSION_ID < 70200
     if (Z_TYPE_P(data) != IS_STRING) {
         convert_to_string(data);
     }
 
-    replace = php_pcre_replace_impl(pce_regexp, NULL, Z_STRVAL_P(repl), Z_STRLEN_P(repl), data, 0, limit, 0);
+    replace = php_pcre_replace_impl(pce_regexp, NULL, ZSTR_VAL(repl), ZSTR_LEN(repl), data, 0, limit, 0);
 #elif PHP_VERSION_ID >= 70200
-    zend_string *z_str = zval_get_string(data);
-
-    replace = php_pcre_replace_impl(pce_regexp, NULL, Z_STRVAL_P(repl), Z_STRLEN_P(repl), z_str, limit, 0);
-
-    zend_string_release(z_str);
+    zend_string *tmp = zval_get_string(data);
+    replace = php_pcre_replace_impl(pce_regexp, NULL, ZSTR_VAL(repl), ZSTR_LEN(repl), tmp, limit, 0);
+    zend_string_release(tmp);
 #endif
 
     return replace;
 }
 
-char* hp_trace_callback_sql_query(char *symbol, zend_execute_data *data)
+zend_string *hp_trace_callback_sql_query(zend_string *symbol, zend_execute_data *data)
 {
-    char *result;
+    zend_string *result;
 
-    if (strcmp(symbol, "mysqli_query") == 0) {
+    if (strcmp(ZSTR_VAL(symbol), "mysqli_query") == 0) {
         zval *arg = ZEND_CALL_ARG(data, 2);
-        spprintf(&result, 0, "%s#%s", symbol, Z_STRVAL_P(arg));
+        result = strpprintf(0, "%s#%s", ZSTR_VAL(symbol), Z_STRVAL_P(arg));
     } else {
         zval *arg = ZEND_CALL_ARG(data, 1);
-        spprintf(&result, 0, "%s#%s", symbol, Z_STRVAL_P(arg));
+        result = strpprintf(0, "%s#%s", ZSTR_VAL(symbol), Z_STRVAL_P(arg));
     }
 
     return result;
 }
 
-char* hp_trace_callback_pdo_statement_execute(char *symbol, zend_execute_data *data)
+zend_string *hp_trace_callback_pdo_statement_execute(zend_string *symbol, zend_execute_data *data)
 {
-    char *result;
+    zend_string *result, *pattern;
     zend_class_entry *pdo_ce;
     zval *object = (data->This.value.obj) ? &(data->This) : NULL;
     zval *query_string, *arg, copy_query;
 
     if (object != NULL) {
-        query_string = zend_read_property(pdo_ce, object, ZEND_STRL("queryString"), 0, NULL);
+        query_string = zend_read_property(pdo_ce, object, "queryString", sizeof("queryString") - 1, 0, NULL);
 
         if (query_string == NULL || Z_TYPE_P(query_string) != IS_STRING) {
-            spprintf(&result, 0, "%s", symbol);
+            result = strpprintf(0, "%s", ZSTR_VAL(symbol));
             return result;
         }
 
 #ifndef HAVE_PCRE
-        spprintf(&result, 0, "%s#%s", symbol, Z_STRVAL_P(query_string));
+        result = strpprintf(0, "%s#%s", ZSTR_VAL(symbol), Z_STRVAL_P(query_string));
         return result;
 #endif
 
         if (ZEND_CALL_NUM_ARGS(data) < 1) {
-            spprintf(&result, 0, "%s#%s", symbol, Z_STRVAL_P(query_string));
+            result = strpprintf(0, "%s#%s", ZSTR_VAL(symbol), Z_STRVAL_P(query_string));
             return result;
         }
 
         arg = ZEND_CALL_ARG(data, 1);
         if (Z_TYPE_P(arg) != IS_ARRAY) {
-            spprintf(&result, 0, "%s#%s", symbol, Z_STRVAL_P(query_string));
+            result = strpprintf(0, "%s#%s", ZSTR_VAL(symbol), Z_STRVAL_P(query_string));
             return result;
         }
 
-        zend_string *pattern_str = NULL;
+        zend_string *repl = zval_get_string(query_string);
 
-        ZVAL_STR(&copy_query, zval_get_string(query_string));
-
-        if (strstr(Z_STRVAL(copy_query), "?") != NULL) {
-            pattern_str = zend_string_init("([\?])", sizeof("([\?])") - 1, 0);
-        } else if (strstr(Z_STRVAL(copy_query), ":") != NULL) {
-            pattern_str = zend_string_init("(:([^\\s]+))", sizeof("(:([^\\s]+))") - 1, 0);
+        if (strstr(ZSTR_VAL(repl), "?") != NULL) {
+            pattern = zend_string_init("([\?])", sizeof("([\?])") - 1, 0);
+        } else if (strstr(ZSTR_VAL(repl), ":") != NULL) {
+            pattern = zend_string_init("(:([^\\s]+))", sizeof("(:([^\\s]+))") - 1, 0);
         }
 
-        if (pattern_str) {
-            zend_string *match;
-            if ((match = hp_pcre_match(ZSTR_VAL(pattern_str), ZSTR_LEN(pattern_str), &copy_query, 0))) {
+        if (pattern) {
+            if (hp_pcre_match(pattern, ZSTR_VAL(repl), ZSTR_LEN(repl), 0)) {
                 zend_ulong num_key;
                 zend_string *key;
                 zval *val;
-                zend_string *replace;
 
                 ZEND_HASH_FOREACH_KEY_VAL(Z_ARRVAL_P(arg), num_key, key, val)
                 {
-                    replace = hp_pcre_replace(ZSTR_VAL(pattern_str), ZSTR_LEN(pattern_str), &copy_query, val, 1);
+                    zend_string *replace;
+
+                    replace = hp_pcre_replace(pattern, repl, val, 1);
 
                     if (replace != NULL) {
-                        zval_ptr_dtor(&copy_query);
-                        ZVAL_STR(&copy_query, replace);
+                        zend_string_release(repl);
+                        repl = strpprintf(0, "%s", ZSTR_VAL(replace));
+                        zend_string_release(replace);
                     }
 
                 }ZEND_HASH_FOREACH_END();
-
-                zend_string_release(match);
             }
 
-            zend_string_release(pattern_str);
+            zend_string_release(pattern);
 
-            spprintf(&result, 0, "%s#%s", symbol, Z_STRVAL(copy_query));
+            result = strpprintf(0, "%s#%s", ZSTR_VAL(symbol), ZSTR_VAL(repl));
 
         } else {
-            spprintf(&result, 0, "%s#%s", symbol, Z_STRVAL(copy_query));
+            result = strpprintf(0, "%s#%s", ZSTR_VAL(symbol), ZSTR_VAL(repl));
         }
 
-        zval_ptr_dtor(&copy_query);
-
+        zend_string_release(repl);
     } else {
-        spprintf(&result, 0, "%s", symbol);
+        result = zend_string_init(ZSTR_VAL(symbol), ZSTR_LEN(symbol), 0);
     }
 
     return result;
 }
 
-char* hp_trace_callback_curl_exec(char *symbol, zend_execute_data *data)
+zend_string *hp_trace_callback_curl_exec(zend_string *symbol, zend_execute_data *data)
 {
-    char *result;
+    zend_string *result;
     zval func, retval, *option;
     zval *arg = ZEND_CALL_ARG(data, 1);
 
@@ -1638,10 +1539,10 @@ char* hp_trace_callback_curl_exec(char *symbol, zend_execute_data *data)
     };
 
     if (zend_call_function(&fci, NULL) == FAILURE) {
-        spprintf(&result, 0, "%s#%s", symbol, "unknown");
+        result = strpprintf(0, "%s#%s", ZSTR_VAL(symbol), "unknown");
     } else {
-        option = zend_hash_str_find(Z_ARRVAL(retval), ZEND_STRL("url"));
-        spprintf(&result, 0, "%s#%s", symbol, Z_STRVAL_P(option));
+        option = zend_hash_str_find(Z_ARRVAL(retval), "url", sizeof("url") - 1);
+        result = strpprintf(0, "%s#%s", ZSTR_VAL(symbol), Z_STRVAL_P(option));
     }
 
     zval_ptr_dtor(&func);
@@ -1650,13 +1551,13 @@ char* hp_trace_callback_curl_exec(char *symbol, zend_execute_data *data)
     return result;
 }
 
-char *hp_get_trace_callback(char* symbol, zend_execute_data *data)
+zend_string *hp_get_trace_callback(zend_string *symbol, zend_execute_data *data)
 {
-    char *result;
+    zend_string *result;
     hp_trace_callback *callback;
 
     if (XHPROF_G(trace_callbacks)) {
-        callback = (hp_trace_callback*)zend_hash_str_find_ptr(XHPROF_G(trace_callbacks), symbol, strlen(symbol));
+        callback = (hp_trace_callback*)zend_hash_find_ptr(XHPROF_G(trace_callbacks), symbol);
         if (callback) {
             result = (*callback)(symbol, data);
         } else {
@@ -1666,7 +1567,7 @@ char *hp_get_trace_callback(char* symbol, zend_execute_data *data)
         return symbol;
     }
 
-    efree(symbol);
+    zend_string_release(symbol);
 
     return result;
 }
@@ -1679,7 +1580,7 @@ void hp_init_trace_callbacks()
 {
     hp_trace_callback callback;
 
-    if (INI_INT("xhprof.collect_additional_info") == 0) {
+    if (!XHPROF_G(collect_additional_info)) {
         return;
     }
 
