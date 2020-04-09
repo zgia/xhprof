@@ -1437,7 +1437,7 @@ zend_string *hp_trace_callback_pdo_statement_execute(zend_string *symbol, zend_e
     zend_string *result, *pattern;
     zend_class_entry *pdo_ce;
     zval *object = (data->This.value.obj) ? &(data->This) : NULL;
-    zval *query_string, *arg, copy_query;
+    zval *query_string, *arg;
 
     if (object != NULL) {
         query_string = zend_read_property(pdo_ce, object, "queryString", sizeof("queryString") - 1, 0, NULL);
@@ -1473,21 +1473,19 @@ zend_string *hp_trace_callback_pdo_statement_execute(zend_string *symbol, zend_e
 
         if (pattern) {
             if (hp_pcre_match(pattern, ZSTR_VAL(repl), ZSTR_LEN(repl), 0)) {
-                zend_ulong num_key;
-                zend_string *key;
                 zval *val;
+                zend_string *replace;
 
-                ZEND_HASH_FOREACH_KEY_VAL(Z_ARRVAL_P(arg), num_key, key, val)
+                ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(arg), val)
                 {
-                    zend_string *replace;
-
                     replace = hp_pcre_replace(pattern, repl, val, 1);
 
-                    if (replace != NULL) {
-                        zend_string_release(repl);
-                        repl = strpprintf(0, "%s", ZSTR_VAL(replace));
-                        zend_string_release(replace);
+                    if (replace == NULL) {
+                        break;
                     }
+
+                    zend_string_release(repl);
+                    repl = replace;
 
                 }ZEND_HASH_FOREACH_END();
             }
