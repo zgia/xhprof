@@ -40,19 +40,19 @@
   <email>longxinhui@php.net</email>
   <active>yes</active>
  </lead>
- <date>2019-12-17</date>
- <time>01:06:00</time>
+ <date>2020-04-10</date>
+ <time>15:30:00</time>
  <version>
-  <release>2.1.4</release>
-  <api>2.1.4</api>
+  <release>2.2.0</release>
+  <api>2.2.0</api>
  </version>
  <stability>
-  <release>beta</release>
-  <api>beta</api>
+  <release>stable</release>
+  <api>stable</api>
  </stability>
  <license uri="http://www.apache.org/licenses/LICENSE-2.0.html">Apache 2.0</license>
  <notes>
- - Windows support #34
+ - Modify hash code calculation, get from zend_string
  </notes>
  <contents>
   <dir name="/">
@@ -113,7 +113,22 @@
  <providesextension>xhprof</providesextension>
  <extsrcrelease />
  <changelog>
-<release> 
+  <release>
+   <date>2020-04-10</date>
+   <version>
+    <release>2.2.0</release>
+    <api>2.2.0</api>
+   </version>
+   <stability>
+    <release>stable</release>
+    <api>stable</api>
+   </stability>
+   <notes>
+    - Modify hash code calculation, get from zend_string
+   </notes>
+  </release>
+
+  <release>
    <date>2019-12-17</date> 
    <version> 
     <release>2.1.4</release> 
@@ -127,7 +142,7 @@
     - Windows support #34
    </notes> 
   </release>
-  <release> 
+  <release>
    <date>2019-12-10</date> 
    <version> 
     <release>2.1.3</release> 
@@ -141,7 +156,7 @@
     - Fix s390x accuracy loss #15
    </notes> 
   </release>
-<release> 
+  <release>
    <date>2019-12-06</date> 
    <version> 
     <release>2.1.2</release> 
@@ -155,8 +170,8 @@
     - Fixed build with PHP-7.4 #32
    </notes> 
   </release>
-<release> 
-   <date>2019-12-03</date> 
+  <release>
+   <date>2019-12-03</date>
    <version> 
     <release>2.1.1</release> 
     <api>2.1.1</api> 
@@ -169,7 +184,7 @@
     - Fix macOS time benchmark #31
    </notes> 
   </release>
-<release> 
+  <release>
    <date>2019-03-07</date> 
    <version> 
     <release>2.1.0</release> 
