@@ -1,6 +1,8 @@
 --TEST--
 XHProf: Test Curl Additional Info
 Author: longxinhui
+--SKIPIF--
+<?php if (!extension_loaded("curl")) print 'skip'; ?>
 --INI--
 xhprof.collect_additional_info = 1
 --FILE--

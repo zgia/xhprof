@@ -35,7 +35,7 @@ print_canonical($output);
 echo "\n";
 
 ?>
---EXPECT--
+--EXPECTF--
 abc,def,ghi
 I am in foo()...
 11
@@ -47,6 +47,6 @@ main()==>dirname                        : ct=       6; wt=*;
 main()==>explode                        : ct=       2; wt=*;
 main()==>foo                            : ct=       1; wt=*;
 main()==>implode                        : ct=       2; wt=*;
-main()==>load::tests/xhprof_004_inc.php : ct=       1; wt=*;
-main()==>load::tests/xhprof_004_require.php: ct=       1; wt=*;
+main()==>load::%sxhprof_004_inc.php%w: ct=       1; wt=*;
+main()==>load::%sxhprof_004_require.php%w: ct=       1; wt=*;
 main()==>xhprof_disable                 : ct=       1; wt=*;

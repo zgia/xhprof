@@ -3,6 +3,12 @@ XHProf: Test Sampling Interval
 Author: longxinhui
 --INI--
 xhprof.sampling_interval = 400000
+--SKIPIF--
+<?php
+if (substr(PHP_OS, 0, 3) == 'WIN') {
+    print 'skip';
+}
+?>
 --FILE--
 <?php
 
@@ -26,8 +32,12 @@ xhprof_sample_enable();
 goo();
 $output = xhprof_sample_disable();
 $interval = array_keys($output);
-if (sprintf("%.6f", $interval[1] - $interval[0]) == '0.400000') {
+$interval_time = sprintf("%.6f", $interval[1] - $interval[0]);
+if ($interval_time == '0.400000') {
     echo 'Test passed';
+} else {
+    var_dump($output);
+    echo $interval_time;
 }
 
 echo "\n";
