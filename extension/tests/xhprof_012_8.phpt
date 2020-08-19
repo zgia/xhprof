@@ -3,7 +3,7 @@ XHProf: Test Curl Additional Info
 Author: longxinhui
 --SKIPIF--
 <?php if (!extension_loaded("curl")) print 'skip'; ?>
-<?php if (PHP_VERSION_ID >= 80000) echo "skip test for php >= 8"; ?>
+<?php if (PHP_VERSION_ID < 80000) echo "skip test for php < 8"; ?>
 --INI--
 xhprof.collect_additional_info = 1
 --FILE--
@@ -25,8 +25,7 @@ echo "\n";
 --EXPECTF--
 main()                                  : ct=       1; wt=*;
 main()==>curl_close                     : ct=       1; wt=*;
-main()==>curl_exec#https://www.php.net/ : ct=       1; wt=*;
-main()==>curl_getinfo                   : ct=       1; wt=*;
+main()==>curl_exec                      : ct=       1; wt=*;
 main()==>curl_init                      : ct=       1; wt=*;
 main()==>curl_setopt                    : ct=       2; wt=*;
 main()==>xhprof_disable                 : ct=       1; wt=*;
