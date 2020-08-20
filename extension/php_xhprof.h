@@ -189,8 +189,13 @@ static zend_op_array * (*_zend_compile_file) (zend_file_handle *file_handle, int
 ZEND_DLEXPORT zend_op_array* hp_compile_file(zend_file_handle *file_handle, int type);
 
 /* Pointer to the original compile string function (used by eval) */
+#if PHP_VERSION_ID < 80000
 static zend_op_array * (*_zend_compile_string) (zval *source_string, char *filename);
 ZEND_DLEXPORT zend_op_array* hp_compile_string(zval *source_string, char *filename);
+#else
+static zend_op_array * (*_zend_compile_string) (zval *source_string, const char *filename);
+ZEND_DLEXPORT zend_op_array* hp_compile_string(zval *source_string, const char *filename);
+#endif
 
 /**
  * ****************************

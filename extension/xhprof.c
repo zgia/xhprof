@@ -1226,7 +1226,11 @@ ZEND_DLEXPORT zend_op_array* hp_compile_file(zend_file_handle *file_handle, int 
 /**
  * Proxy for zend_compile_string(). Used to profile PHP eval compilation time.
  */
+#if PHP_VERSION_ID < 80000
 ZEND_DLEXPORT zend_op_array* hp_compile_string(zval *source_string, char *filename)
+#else
+ZEND_DLEXPORT zend_op_array* hp_compile_string(zval *source_string, const char *filename)
+#endif
 {
     if (!XHPROF_G(enabled)) {
         return _zend_compile_string(source_string, filename);
@@ -1532,7 +1536,9 @@ zend_string *hp_trace_callback_curl_exec(zend_string *symbol, zend_execute_data 
             &retval,
             params,
             NULL,
+#if PHP_VERSION_ID < 80000
             1,
+#endif
             1
     };
 
