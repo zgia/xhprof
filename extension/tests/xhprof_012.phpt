@@ -3,7 +3,6 @@ XHProf: Test Curl Additional Info
 Author: longxinhui
 --SKIPIF--
 <?php if (!extension_loaded("curl")) print 'skip'; ?>
-<?php if (PHP_VERSION_ID >= 80000) echo "skip test for php >= 8"; ?>
 --INI--
 xhprof.collect_additional_info = 1
 --FILE--
