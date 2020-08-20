@@ -11,6 +11,7 @@ This version supports PHP7
 - 7.2
 - 7.3
 - 7.4
+- nightly
 
 # Installation
 ```
