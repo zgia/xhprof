@@ -1521,7 +1521,8 @@ zend_string *hp_trace_callback_curl_exec(zend_string *symbol, zend_execute_data 
 #else
     if (arg == NULL || Z_TYPE_P(arg) != IS_OBJECT) {
 #endif
-        return symbol;
+        result = strpprintf(0, "%s", ZSTR_VAL(symbol));
+        return result;
     }
 
     zval params[1];
@@ -1555,6 +1556,7 @@ zend_string *hp_trace_callback_curl_exec(zend_string *symbol, zend_execute_data 
 
     zval_ptr_dtor(&func);
     zval_ptr_dtor(&retval);
+    zval_ptr_dtor(&params);
 
     return result;
 }
