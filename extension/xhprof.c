@@ -1516,7 +1516,11 @@ zend_string *hp_trace_callback_curl_exec(zend_string *symbol, zend_execute_data 
     zval func, retval, *option;
     zval *arg = ZEND_CALL_ARG(data, 1);
 
+#if PHP_VERSION_ID < 80000
     if (arg == NULL || Z_TYPE_P(arg) != IS_RESOURCE) {
+#else
+    if (arg == NULL || Z_TYPE_P(arg) != IS_OBJECT) {
+#endif
         return symbol;
     }
 
