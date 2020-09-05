@@ -1444,7 +1444,11 @@ zend_string *hp_trace_callback_pdo_statement_execute(zend_string *symbol, zend_e
     zval *query_string, *arg;
 
     if (object != NULL) {
+#if PHP_VERSION_ID < 80000
         query_string = zend_read_property(pdo_ce, object, "queryString", sizeof("queryString") - 1, 0, NULL);
+#else
+        query_string = zend_read_property(pdo_ce, Z_OBJ_P(object), "queryString", sizeof("queryString") - 1, 0, NULL);
+#endif
 
         if (query_string == NULL || Z_TYPE_P(query_string) != IS_STRING) {
             result = strpprintf(0, "%s", ZSTR_VAL(symbol));
@@ -1556,7 +1560,7 @@ zend_string *hp_trace_callback_curl_exec(zend_string *symbol, zend_execute_data 
 
     zval_ptr_dtor(&func);
     zval_ptr_dtor(&retval);
-    zval_ptr_dtor(&params);
+    zval_ptr_dtor(&params[0]);
 
     return result;
 }
