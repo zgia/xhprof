@@ -1229,7 +1229,7 @@ ZEND_DLEXPORT zend_op_array* hp_compile_file(zend_file_handle *file_handle, int 
 #if PHP_VERSION_ID < 80000
 ZEND_DLEXPORT zend_op_array* hp_compile_string(zval *source_string, char *filename)
 #else
-ZEND_DLEXPORT zend_op_array* hp_compile_string(zval *source_string, const char *filename)
+ZEND_DLEXPORT zend_op_array* hp_compile_string(zend_string *source_string, const char *filename)
 #endif
 {
     if (!XHPROF_G(enabled)) {
