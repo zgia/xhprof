@@ -52,7 +52,7 @@
  </stability>
  <license uri="http://www.apache.org/licenses/LICENSE-2.0.html">Apache 2.0</license>
  <notes>
- - Modify hash code calculation, get from zend_string
+ - Support PHP 8.0 beta4
  </notes>
  <contents>
   <dir name="/">
@@ -113,6 +113,21 @@
  <providesextension>xhprof</providesextension>
  <extsrcrelease />
  <changelog>
+  <release>
+   <date>2020-09-19</date>
+   <version>
+    <release>2.2.1</release>
+    <api>2.2.1</api>
+   </version>
+   <stability>
+    <release>beta</release>
+    <api>beta</api>
+   </stability>
+   <notes>
+    - Support PHP 8.0 beta4
+   </notes>
+  </release>
+
   <release>
    <date>2020-04-10</date>
    <version>

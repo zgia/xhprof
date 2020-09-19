@@ -11,7 +11,7 @@ This version supports PHP7
 - 7.2
 - 7.3
 - 7.4
-- 8.0beta4
+- 8.0 beta4
 
 # Installation
 ```
