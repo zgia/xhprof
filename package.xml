@@ -40,11 +40,11 @@
   <email>longxinhui@php.net</email>
   <active>yes</active>
  </lead>
- <date>2020-09-19</date>
- <time>00:10:00</time>
+ <date>2020-10-09</date>
+ <time>14:00:00</time>
  <version>
-  <release>2.2.1</release>
-  <api>2.2.1</api>
+  <release>2.2.2</release>
+  <api>2.2.2</api>
  </version>
  <stability>
   <release>beta</release>
@@ -52,7 +52,7 @@
  </stability>
  <license uri="http://www.apache.org/licenses/LICENSE-2.0.html">Apache 2.0</license>
  <notes>
- - Support PHP 8.0 beta4
+ - Fix PECL installation #48
  </notes>
  <contents>
   <dir name="/">
@@ -120,6 +120,21 @@
  <providesextension>xhprof</providesextension>
  <extsrcrelease />
  <changelog>
+  <release>
+   <date>2020-10-09</date>
+   <version>
+    <release>2.2.2</release>
+    <api>2.2.2</api>
+   </version>
+   <stability>
+    <release>beta</release>
+    <api>beta</api>
+   </stability>
+   <notes>
+    - Fix PECL installation #48
+   </notes>
+  </release>
+
   <release>
    <date>2020-09-19</date>
    <version>
