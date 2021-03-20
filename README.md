@@ -63,8 +63,8 @@ array(
 )
 ```
 
-- `wt` The number of times the function was called
-- `ct` The execution time of a function method is time consuming
+- `wt` The execution time of the function method is time consuming
+- `ct` The number of times the function was called
 - `cpu` The CPU time consumed by the function method execution
 - `mu` Memory used by function methods. The call is zend_memory_usage to get the memory usage
 - `pmu` Peak memory used by the function method. The call is zend_memory_peak_usage to get the memory
