@@ -40,15 +40,15 @@
   <email>longxinhui@php.net</email>
   <active>yes</active>
  </lead>
- <date>2020-11-26</date>
- <time>20:00:00</time>
+ <date>2021-03-31</date>
+ <time>22:25:00</time>
  <version>
-  <release>2.2.3</release>
-  <api>2.2.3</api>
+  <release>2.3.0</release>
+  <api>2.3.0</api>
  </version>
  <stability>
-  <release>stable</release>
-  <api>stable</api>
+  <release>beta</release>
+  <api>beta</api>
  </stability>
  <license uri="http://www.apache.org/licenses/LICENSE-2.0.html">Apache 2.0</license>
  <notes>
@@ -120,6 +120,22 @@
  <providesextension>xhprof</providesextension>
  <extsrcrelease />
  <changelog>
+  <release>
+   <date>2021-03-31</date>
+   <version>
+    <release>2.3.0</release>
+    <api>2.3.0</api>
+   </version>
+   <stability>
+    <release>beta</release>
+    <api>beta</api>
+   </stability>
+   <notes>
+    - PHP8 JIT support #51
+    - Allow to override xhprof.output_dir via env XHPROF_OUTPUT_DIR
+   </notes>
+  </release>
+
   <release>
    <date>2020-11-26</date>
    <version>
