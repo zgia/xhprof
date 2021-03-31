@@ -52,7 +52,8 @@
  </stability>
  <license uri="http://www.apache.org/licenses/LICENSE-2.0.html">Apache 2.0</license>
  <notes>
- - Fix reflected XSS with symbol parameter #50
+    - PHP8 JIT support #51
+    - Allow to override xhprof.output_dir via env XHPROF_OUTPUT_DIR
  </notes>
  <contents>
   <dir name="/">
@@ -78,6 +79,7 @@
    <file name="extension/config.m4" role="src" />
    <file name="extension/config.w32" role="src" />
    <file name="extension/php_xhprof.h" role="src" />
+   <file name="extension/trace.h" role="src" />
    <file name="extension/xhprof.c" role="src" />
    <file name="xhprof_html/css/xhprof.css" role="php" />
    <file name="xhprof_html/docs/index.html" role="doc" />
