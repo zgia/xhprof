@@ -24,6 +24,8 @@
 #include "ext/standard/info.h"
 #include "php_xhprof.h"
 #include "zend_extensions.h"
+#include "trace.h"
+
 #ifndef ZEND_WIN32
 # include <sys/time.h>
 # include <sys/resource.h>
@@ -266,9 +268,13 @@ PHP_MINIT_FUNCTION(xhprof)
     _zend_compile_string = zend_compile_string;
     zend_compile_string = hp_compile_string;
 
+#if PHP_VERSION_ID >= 80000
+    zend_observer_fcall_register(tracer_observer);
+#else
     /* Replace zend_execute with our proxy */
     _zend_execute_ex = zend_execute_ex;
     zend_execute_ex  = hp_execute_ex;
+#endif
 
     /* Replace zend_execute_internal with our proxy */
     _zend_execute_internal = zend_execute_internal;
@@ -293,8 +299,10 @@ PHP_MSHUTDOWN_FUNCTION(xhprof)
     /* free any remaining items in the free list */
     hp_free_the_free_list();
 
+#if PHP_VERSION_ID < 80000
     /* Remove proxies, restore the originals */
     zend_execute_ex       = _zend_execute_ex;
+#endif
     zend_execute_internal = _zend_execute_internal;
     zend_compile_file     = _zend_compile_file;
     zend_compile_string   = _zend_compile_string;
@@ -462,17 +470,6 @@ hp_ignored_functions *hp_ignored_functions_init(zval *values)
 }
 
 /**
- * Check if function collides in filter of functions to be ignored.
- *
- * @author mpal
- */
-int hp_ignored_functions_filter_collision(hp_ignored_functions *functions, zend_ulong hash)
-{
-    zend_ulong idx = hash % XHPROF_MAX_IGNORED_FUNCTIONS;
-    return functions->filter[idx];
-}
-
-/**
  * Initialize profiler state
  *
  * @author kannan, veeve
@@ -490,6 +487,10 @@ void hp_init_profiler_state(int level)
     /* Init stats_count */
     if (Z_TYPE(XHPROF_G(stats_count)) != IS_UNDEF) {
         zval_ptr_dtor(&XHPROF_G(stats_count));
+    }
+
+    if (XHPROF_G(root)) {
+        zend_string_release(XHPROF_G(root));
     }
 
     array_init(&XHPROF_G(stats_count));
@@ -527,6 +528,10 @@ void hp_clean_profiler_state()
         XHPROF_G(trace_callbacks) = NULL;
     }
 
+    if (XHPROF_G(root)) {
+        zend_string_release(XHPROF_G(root));
+    }
+
     /* Delete the array storing ignored function names */
     hp_ignored_functions_clear(XHPROF_G(ignored_functions));
     XHPROF_G(ignored_functions) = NULL;
@@ -553,32 +558,6 @@ size_t hp_get_entry_name(hp_entry_t *entry, char *result_buf, size_t result_len)
     return len;
 }
 
-/**
- * Check if this entry should be ignored, first with a conservative Bloomish
- * filter then with an exact check against the function names.
- *
- * @author mpal
- */
-int hp_ignore_entry_work(zend_ulong hash_code, zend_string *curr_func)
-{
-    if (XHPROF_G(ignored_functions) == NULL) {
-        return 0;
-    }
-
-    hp_ignored_functions *functions = XHPROF_G(ignored_functions);
-
-    if (hp_ignored_functions_filter_collision(functions, hash_code)) {
-        int i = 0;
-        for (; functions->names[i] != NULL; i++) {
-            zend_string *name = functions->names[i];
-            if (zend_string_equals(curr_func, name)) {
-                return 1;
-            }
-        }
-    }
-
-    return 0;
-}
 
 /**
  * Build a caller qualified name for a callee.
@@ -658,40 +637,6 @@ static const char *hp_get_base_filename(const char *filename)
 }
 
 /**
- * Get the name of the current function. The name is qualified with
- * the class name if the function is in a class.
- *
- * @author kannan, hzhao
- */
-static zend_string *hp_get_function_name(zend_execute_data *execute_data)
-{
-    zend_string *ret;
-    zend_function *curr_func;
-    zend_string *func = NULL;
-
-    if (!execute_data) {
-        return NULL;
-    }
-
-    /* shared meta data for function on the call stack */
-    curr_func = execute_data->func;
-    /* extract function name from the meta info */
-    func = curr_func->common.function_name;
-
-    if (!func) {
-        return NULL;
-    }
-
-    if (curr_func->common.scope != NULL) {
-        ret = strpprintf(0, "%s::%s", curr_func->common.scope->name->val, ZSTR_VAL(func));
-    } else {
-        ret = zend_string_init(ZSTR_VAL(func), ZSTR_LEN(func), 0);
-    }
-
-    return ret;
-}
-
-/**
  * Free any items in the free list.
  */
 static void hp_free_the_free_list()
@@ -704,44 +649,6 @@ static void hp_free_the_free_list()
         p = p->prev_hprof;
         free(cur);
     }
-}
-
-/**
- * Fast allocate a hp_entry_t structure. Picks one from the
- * free list if available, else does an actual allocate.
- *
- * Doesn't bother initializing allocated memory.
- *
- * @author kannan
- */
-static hp_entry_t *hp_fast_alloc_hprof_entry()
-{
-    hp_entry_t *p;
-
-    p = XHPROF_G(entry_free_list);
-
-    if (p) {
-        XHPROF_G(entry_free_list) = p->prev_hprof;
-        return p;
-    } else {
-        return (hp_entry_t *)malloc(sizeof(hp_entry_t));
-    }
-}
-
-/**
- * Fast free a hp_entry_t structure. Simply returns back
- * the hp_entry_t to a free list and doesn't actually
- * perform the free.
- *
- * @author kannan
- */
-static void hp_fast_free_hprof_entry(hp_entry_t *p)
-{
-    /* we use/overload the prev_hprof field in the structure to link entries in
-     * the free list.
-     * */
-    p->prev_hprof = XHPROF_G(entry_free_list);
-    XHPROF_G(entry_free_list) = p;
 }
 
 /**
@@ -934,46 +841,6 @@ void hp_mode_dummy_endfn_cb(hp_entry_t **entries)
 
 }
 
-
-/**
- * ****************************
- * XHPROF COMMON CALLBACKS
- * ****************************
- */
-/**
- * XHPROF universal begin function.
- * This function is called for all modes before the
- * mode's specific begin_function callback is called.
- *
- * @param  hp_entry_t **entries  linked list (stack)
- *                                  of hprof entries
- * @param  hp_entry_t  *current  hprof entry for the current fn
- * @return void
- * @author kannan, veeve
- */
-void hp_mode_common_beginfn(hp_entry_t **entries, hp_entry_t *current)
-{
-    hp_entry_t *p;
-
-    /* This symbol's recursive level */
-    int recurse_level = 0;
-
-    if (XHPROF_G(func_hash_counters[current->hash_code]) > 0) {
-        /* Find this symbols recurse level */
-        for (p = (*entries); p; p = p->prev_hprof) {
-            if (zend_string_equals(current->name_hprof, p->name_hprof)) {
-                recurse_level = (p->rlvl_hprof) + 1;
-                break;
-            }
-        }
-    }
-
-    XHPROF_G(func_hash_counters[current->hash_code])++;
-
-    /* Init current function's recurse level */
-    current->rlvl_hprof = recurse_level;
-}
-
 /**
  * *********************************
  * XHPROF INIT MODULE CALLBACKS
@@ -1059,6 +926,13 @@ void hp_mode_hier_endfn_cb(hp_entry_t **entries)
     long int        pmu_end;
     double          wt, cpu;
 
+#if PHP_VERSION_ID >= 80000
+    if (top->is_trace == 0) {
+        XHPROF_G(func_hash_counters[top->hash_code])--;
+        return;
+    }
+#endif
+
     /* Get end tsc counter */
     wt = cycle_timer() - top->tsc_start;
 
@@ -1123,35 +997,56 @@ void hp_mode_sampled_endfn_cb(hp_entry_t **entries)
  * @author hzhao, kannan
  */
 
+#if PHP_VERSION_ID >= 80000
+static void tracer_observer_begin(zend_execute_data *execute_data) {
+    if (!XHPROF_G(enabled)) {
+        return;
+    }
+
+    begin_profiling(NULL, execute_data);
+}
+
+static void tracer_observer_end(zend_execute_data *ex, zval *return_value) {
+    if (!XHPROF_G(enabled)) {
+        return;
+    }
+
+    if (XHPROF_G(entries)) {
+        end_profiling();
+    }
+}
+
+
+static zend_observer_fcall_handlers tracer_observer(zend_execute_data *execute_data) {
+    zend_function *func = execute_data->func;
+
+    if (!func->common.function_name) {
+        return (zend_observer_fcall_handlers){NULL, NULL};
+    }
+
+    return (zend_observer_fcall_handlers){tracer_observer_begin, tracer_observer_end};
+}
+#else
 ZEND_DLEXPORT void hp_execute_ex (zend_execute_data *execute_data)
 {
+    int is_profiling = 1;
+
     if (!XHPROF_G(enabled)) {
         _zend_execute_ex(execute_data);
         return;
     }
 
-    zend_string *func;
-    int hp_profile_flag = 1;
+    //zend_execute_data *real_execute_data = execute_data->prev_execute_data;
 
-    func = hp_get_function_name(execute_data);
-
-    if (!func) {
-        _zend_execute_ex(execute_data);
-        return;
-    }
-
-    zend_execute_data *real_execute_data = execute_data->prev_execute_data;
-
-    BEGIN_PROFILING(&XHPROF_G(entries), func, hp_profile_flag, real_execute_data);
+    is_profiling = begin_profiling(NULL, execute_data);
 
     _zend_execute_ex(execute_data);
 
-    if (XHPROF_G(entries)) {
-        END_PROFILING(&XHPROF_G(entries), hp_profile_flag);
+    if (is_profiling == 1 && XHPROF_G(entries)) {
+        end_profiling();
     }
-
-    zend_string_release(func);
 }
+#endif
 
 /**
  * Very similar to hp_execute. Proxy for zend_execute_internal().
@@ -1162,19 +1057,14 @@ ZEND_DLEXPORT void hp_execute_ex (zend_execute_data *execute_data)
 
 ZEND_DLEXPORT void hp_execute_internal(zend_execute_data *execute_data, zval *return_value)
 {
-    if (!XHPROF_G(enabled) || (XHPROF_G(xhprof_flags) & XHPROF_FLAGS_NO_BUILTINS)) {
+    int is_profiling = 1;
+
+    if (!XHPROF_G(enabled) || (XHPROF_G(xhprof_flags) & XHPROF_FLAGS_NO_BUILTINS) > 0) {
         execute_internal(execute_data, return_value);
         return;
     }
 
-    zend_string *func;
-    int hp_profile_flag = 1;
-
-    func = hp_get_function_name(execute_data);
-
-    if (func) {
-        BEGIN_PROFILING(&XHPROF_G(entries), func, hp_profile_flag, execute_data);
-    }
+    is_profiling = begin_profiling(NULL, execute_data);
 
     if (!_zend_execute_internal) {
         /* no old override to begin with. so invoke the builtin's implementation  */
@@ -1184,11 +1074,8 @@ ZEND_DLEXPORT void hp_execute_internal(zend_execute_data *execute_data, zval *re
         _zend_execute_internal(execute_data, return_value);
     }
 
-    if (func) {
-        if (XHPROF_G(entries)) {
-            END_PROFILING(&XHPROF_G(entries), hp_profile_flag);
-        }
-        zend_string_release(func);
+    if (is_profiling == 1 && XHPROF_G(entries)) {
+        end_profiling();
     }
 
 }
@@ -1200,27 +1087,29 @@ ZEND_DLEXPORT void hp_execute_internal(zend_execute_data *execute_data, zval *re
  */
 ZEND_DLEXPORT zend_op_array* hp_compile_file(zend_file_handle *file_handle, int type)
 {
+    int is_profiling = 1;
+
     if (!XHPROF_G(enabled)) {
         return _zend_compile_file(file_handle, type);
     }
 
     const char *filename;
-    zend_string *func;
-    zend_op_array *ret;
-    int hp_profile_flag = 1;
+    zend_string *function_name;
+    zend_op_array *op_array;
 
     filename = hp_get_base_filename(file_handle->filename);
-    func = strpprintf(0, "load::%s", filename);
+    function_name = strpprintf(0, "load::%s", filename);
 
-    BEGIN_PROFILING(&XHPROF_G(entries), func, hp_profile_flag, NULL);
-    ret = _zend_compile_file(file_handle, type);
+    is_profiling = begin_profiling(function_name, NULL);
+    op_array = _zend_compile_file(file_handle, type);
 
-    if (XHPROF_G(entries)) {
-        END_PROFILING(&XHPROF_G(entries), hp_profile_flag);
+    if (is_profiling == 1 && XHPROF_G(entries)) {
+        end_profiling();
     }
 
-    zend_string_release(func);
-    return ret;
+    zend_string_release(function_name);
+
+    return op_array;
 }
 
 /**
@@ -1232,25 +1121,27 @@ ZEND_DLEXPORT zend_op_array* hp_compile_string(zval *source_string, char *filena
 ZEND_DLEXPORT zend_op_array* hp_compile_string(zend_string *source_string, const char *filename)
 #endif
 {
+    int is_profiling = 1;
+
     if (!XHPROF_G(enabled)) {
         return _zend_compile_string(source_string, filename);
     }
 
-    zend_string *func;
-    zend_op_array *ret;
-    int hp_profile_flag = 1;
+    zend_string *function_name;
+    zend_op_array *op_array;
 
-    func = strpprintf(0, "eval::%s", filename);
+    function_name = strpprintf(0, "eval::%s", filename);
 
-    BEGIN_PROFILING(&XHPROF_G(entries), func, hp_profile_flag, NULL);
-    ret = _zend_compile_string(source_string, filename);
+    is_profiling = begin_profiling(function_name, NULL);
+    op_array = _zend_compile_string(source_string, filename);
 
-    if (XHPROF_G(entries)) {
-        END_PROFILING(&XHPROF_G(entries), hp_profile_flag);
+    if (is_profiling == 1 && XHPROF_G(entries)) {
+        end_profiling();
     }
 
-    zend_string_release(func);
-    return ret;
+    zend_string_release(function_name);
+
+    return op_array;
 }
 
 /**
@@ -1267,8 +1158,6 @@ ZEND_DLEXPORT zend_op_array* hp_compile_string(zend_string *source_string, const
 static void hp_begin(zend_long level, zend_long xhprof_flags)
 {
     if (!XHPROF_G(enabled)) {
-        int hp_profile_flag = 1;
-
         XHPROF_G(enabled)      = 1;
         XHPROF_G(xhprof_flags) = (uint32)xhprof_flags;
 
@@ -1300,7 +1189,7 @@ static void hp_begin(zend_long level, zend_long xhprof_flags)
         XHPROF_G(root) = zend_string_init(ROOT_SYMBOL, sizeof(ROOT_SYMBOL) - 1, 0);
 
         /* start profiling from fictitious main() */
-        BEGIN_PROFILING(&XHPROF_G(entries), XHPROF_G(root), hp_profile_flag, NULL);
+        begin_profiling(XHPROF_G(root), NULL);
     }
 }
 
@@ -1329,15 +1218,9 @@ static void hp_end()
  */
 static void hp_stop()
 {
-    int hp_profile_flag = 1;
-
     /* End any unfinished calls */
     while (XHPROF_G(entries)) {
-        END_PROFILING(&XHPROF_G(entries), hp_profile_flag);
-    }
-
-    if (XHPROF_G(root)) {
-        zend_string_release(XHPROF_G(root));
+        end_profiling();
     }
 
     /* Stop profiling */
@@ -1421,19 +1304,19 @@ zend_string *hp_pcre_replace(zend_string *pattern, zend_string *repl, zval *data
     return replace;
 }
 
-zend_string *hp_trace_callback_sql_query(zend_string *symbol, zend_execute_data *data)
+zend_string *hp_trace_callback_sql_query(zend_string *function_name, zend_execute_data *data)
 {
-    zend_string *result;
+    zend_string *trace_name;
 
-    if (strcmp(ZSTR_VAL(symbol), "mysqli_query") == 0) {
+    if (strcmp(ZSTR_VAL(function_name), "mysqli_query") == 0) {
         zval *arg = ZEND_CALL_ARG(data, 2);
-        result = strpprintf(0, "%s#%s", ZSTR_VAL(symbol), Z_STRVAL_P(arg));
+        trace_name = strpprintf(0, "%s#%s", ZSTR_VAL(function_name), Z_STRVAL_P(arg));
     } else {
         zval *arg = ZEND_CALL_ARG(data, 1);
-        result = strpprintf(0, "%s#%s", ZSTR_VAL(symbol), Z_STRVAL_P(arg));
+        trace_name = strpprintf(0, "%s#%s", ZSTR_VAL(function_name), Z_STRVAL_P(arg));
     }
 
-    return result;
+    return trace_name;
 }
 
 zend_string *hp_trace_callback_pdo_statement_execute(zend_string *symbol, zend_execute_data *data)
@@ -1561,27 +1444,6 @@ zend_string *hp_trace_callback_curl_exec(zend_string *symbol, zend_execute_data 
     zval_ptr_dtor(&func);
     zval_ptr_dtor(&retval);
     zval_ptr_dtor(&params[0]);
-
-    return result;
-}
-
-zend_string *hp_get_trace_callback(zend_string *symbol, zend_execute_data *data)
-{
-    zend_string *result;
-    hp_trace_callback *callback;
-
-    if (XHPROF_G(trace_callbacks)) {
-        callback = (hp_trace_callback*)zend_hash_find_ptr(XHPROF_G(trace_callbacks), symbol);
-        if (callback) {
-            result = (*callback)(symbol, data);
-        } else {
-            return symbol;
-        }
-    } else {
-        return symbol;
-    }
-
-    zend_string_release(symbol);
 
     return result;
 }
