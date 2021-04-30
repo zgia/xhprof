@@ -40,11 +40,11 @@
   <email>longxinhui@php.net</email>
   <active>yes</active>
  </lead>
- <date>2021-03-31</date>
- <time>22:25:00</time>
+ <date>2021-04-30</date>
+ <time>23:56:00</time>
  <version>
-  <release>2.3.0</release>
-  <api>2.3.0</api>
+  <release>2.3.1</release>
+  <api>2.3.1</api>
  </version>
  <stability>
   <release>beta</release>
@@ -52,8 +52,7 @@
  </stability>
  <license uri="http://www.apache.org/licenses/LICENSE-2.0.html">Apache 2.0</license>
  <notes>
-    - PHP8 JIT support #51
-    - Allow to override xhprof.output_dir via env XHPROF_OUTPUT_DIR
+    - Set SVG render as default for callgraph.php
  </notes>
  <contents>
   <dir name="/">
@@ -122,6 +121,21 @@
  <providesextension>xhprof</providesextension>
  <extsrcrelease />
  <changelog>
+  <release>
+   <date>2021-04-30</date>
+   <version>
+    <release>2.3.1</release>
+    <api>2.3.1</api>
+   </version>
+   <stability>
+    <release>beta</release>
+    <api>beta</api>
+   </stability>
+   <notes>
+    - Set SVG render as default for callgraph.php
+   </notes>
+  </release>
+
   <release>
    <date>2021-03-31</date>
    <version>
