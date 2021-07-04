@@ -999,18 +999,10 @@ void hp_mode_sampled_endfn_cb(hp_entry_t **entries)
 
 #if PHP_VERSION_ID >= 80000
 static void tracer_observer_begin(zend_execute_data *execute_data) {
-    if (!XHPROF_G(enabled)) {
-        return;
-    }
-
     begin_profiling(NULL, execute_data);
 }
 
 static void tracer_observer_end(zend_execute_data *ex, zval *return_value) {
-    if (!XHPROF_G(enabled)) {
-        return;
-    }
-
     if (XHPROF_G(entries)) {
         end_profiling();
     }
@@ -1018,6 +1010,10 @@ static void tracer_observer_end(zend_execute_data *ex, zval *return_value) {
 
 
 static zend_observer_fcall_handlers tracer_observer(zend_execute_data *execute_data) {
+    if (!XHPROF_G(enabled)) {
+        return (zend_observer_fcall_handlers){NULL, NULL};
+    }
+    
     zend_function *func = execute_data->func;
 
     if (!func->common.function_name) {
