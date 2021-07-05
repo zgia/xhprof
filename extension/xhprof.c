@@ -1008,19 +1008,19 @@ static void tracer_observer_end(zend_execute_data *ex, zval *return_value) {
     }
 }
 
-
 static zend_observer_fcall_handlers tracer_observer(zend_execute_data *execute_data) {
+    zend_observer_fcall_handlers handlers = {NULL, NULL};
     if (!XHPROF_G(enabled)) {
-        return (zend_observer_fcall_handlers){NULL, NULL};
-    }
-    
-    zend_function *func = execute_data->func;
-
-    if (!func->common.function_name) {
-        return (zend_observer_fcall_handlers){NULL, NULL};
+        return handlers;
     }
 
-    return (zend_observer_fcall_handlers){tracer_observer_begin, tracer_observer_end};
+    if (!execute_data->func || !execute_data->func->common.function_name) {
+        return handlers;
+    }
+
+    handlers.begin = tracer_observer_begin;
+    handlers.end = tracer_observer_end;
+    return handlers;
 }
 #else
 ZEND_DLEXPORT void hp_execute_ex (zend_execute_data *execute_data)
