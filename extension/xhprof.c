@@ -1093,7 +1093,12 @@ ZEND_DLEXPORT zend_op_array* hp_compile_file(zend_file_handle *file_handle, int 
     zend_string *function_name;
     zend_op_array *op_array;
 
+#if PHP_VERSION_ID < 80100
     filename = hp_get_base_filename(file_handle->filename);
+#else
+    filename = hp_get_base_filename(ZSTR_VAL(file_handle->filename));
+#endif
+
     function_name = strpprintf(0, "load::%s", filename);
 
     is_profiling = begin_profiling(function_name, NULL);
