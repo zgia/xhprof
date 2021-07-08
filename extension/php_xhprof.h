@@ -43,7 +43,7 @@ extern zend_module_entry xhprof_module_entry;
  */
 
 /* XHProf version                           */
-#define XHPROF_VERSION       "2.3.3"
+#define XHPROF_VERSION       "2.3.4-dev"
 
 #define XHPROF_FUNC_HASH_COUNTERS_SIZE   1024
 

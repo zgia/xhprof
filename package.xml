@@ -53,7 +53,7 @@
  <license uri="http://www.apache.org/licenses/LICENSE-2.0.html">Apache 2.0</license>
  <notes>
     - Fix memory leak on array_filter #60
-    - Custom xhprof_error
+    - Custom xhprof_error #59
  </notes>
  <contents>
   <dir name="/">
@@ -134,7 +134,7 @@
    </stability>
    <notes>
     - Fix memory leak on array_filter #60
-    - Custom xhprof_error
+    - Custom xhprof_error #59
    </notes>
   </release>
 
