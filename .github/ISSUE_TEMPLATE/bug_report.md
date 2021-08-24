@@ -1,11 +1,15 @@
 ---
 name: Bug report
-about: Please answer these questions before submitting your issue. Thanks!
+about: I want to report a Bug
 title: ''
 labels: bug
 assignees: ''
 
 ---
+
+## Bug Report
+
+Please answer these questions before submitting your issue. Thanks!
 
 1. What did you do? If possible, provide a simple script for reproducing the error.
 
