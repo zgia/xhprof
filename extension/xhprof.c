@@ -489,10 +489,6 @@ void hp_init_profiler_state(int level)
         zval_ptr_dtor(&XHPROF_G(stats_count));
     }
 
-    if (XHPROF_G(root)) {
-        zend_string_release(XHPROF_G(root));
-    }
-
     array_init(&XHPROF_G(stats_count));
 
     hp_init_trace_callbacks();
