@@ -49,7 +49,7 @@ $output = xhprof_disable();
 
 function verify($expected, $actual, $description) {
 
-  echo "Verifying ${description}...\n";
+  echo "Verifying {$description}...\n";
 
   // 25% tolerance
   $range_low = ($expected * 0.75);
@@ -57,10 +57,10 @@ function verify($expected, $actual, $description) {
 
   if (($actual < $range_low) ||
       ($actual > $range_high)) {
-     echo "Failed ${description}. Expected: ${expected} microsecs. ".
-          "Actual: ${actual} microsecs.\n";
+     echo "Failed {$description}. Expected: {$expected} microsecs. ".
+          "Actual: {$actual} microsecs.\n";
   } else {
-     echo "OK: ${description}\n";
+     echo "OK: {$description}\n";
   }
   echo "-------------\n";
 }
