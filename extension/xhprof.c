@@ -995,11 +995,23 @@ void hp_mode_sampled_endfn_cb(hp_entry_t **entries)
 
 #if PHP_VERSION_ID >= 80000
 static void tracer_observer_begin(zend_execute_data *execute_data) {
+#if PHP_VERSION_ID >= 80200
+    if (execute_data->func->type == ZEND_INTERNAL_FUNCTION) {
+        return;
+    }
+#endif
+
     begin_profiling(NULL, execute_data);
 }
 
-static void tracer_observer_end(zend_execute_data *ex, zval *return_value) {
+static void tracer_observer_end(zend_execute_data *execute_data, zval *return_value) {
     if (XHPROF_G(entries)) {
+#if PHP_VERSION_ID >= 80200
+        if (execute_data->func->type == ZEND_INTERNAL_FUNCTION) {
+            return;
+        }
+#endif
+
         end_profiling();
     }
 }
@@ -1069,7 +1081,6 @@ ZEND_DLEXPORT void hp_execute_internal(zend_execute_data *execute_data, zval *re
     if (is_profiling == 1 && XHPROF_G(entries)) {
         end_profiling();
     }
-
 }
 
 /**
@@ -1114,6 +1125,8 @@ ZEND_DLEXPORT zend_op_array* hp_compile_file(zend_file_handle *file_handle, int 
  */
 #if PHP_VERSION_ID < 80000
 ZEND_DLEXPORT zend_op_array* hp_compile_string(zval *source_string, char *filename)
+#elif PHP_VERSION_ID >= 80200
+ZEND_DLEXPORT zend_op_array* hp_compile_string(zend_string *source_string, const char *filename, zend_compile_position position)
 #else
 ZEND_DLEXPORT zend_op_array* hp_compile_string(zend_string *source_string, const char *filename)
 #endif
@@ -1121,7 +1134,11 @@ ZEND_DLEXPORT zend_op_array* hp_compile_string(zend_string *source_string, const
     int is_profiling = 1;
 
     if (!XHPROF_G(enabled)) {
+#if PHP_VERSION_ID >= 80200
+        return _zend_compile_string(source_string, filename, position);
+#else
         return _zend_compile_string(source_string, filename);
+#endif
     }
 
     zend_string *function_name;
@@ -1130,7 +1147,11 @@ ZEND_DLEXPORT zend_op_array* hp_compile_string(zend_string *source_string, const
     function_name = strpprintf(0, "eval::%s", filename);
 
     is_profiling = begin_profiling(function_name, NULL);
+#if PHP_VERSION_ID >= 80200
+    op_array = _zend_compile_string(source_string, filename, position);
+#else
     op_array = _zend_compile_string(source_string, filename);
+#endif
 
     if (is_profiling == 1 && XHPROF_G(entries)) {
         end_profiling();
@@ -1222,6 +1243,10 @@ static void hp_stop()
 
     /* Stop profiling */
     XHPROF_G(enabled) = 0;
+
+    if (XHPROF_G(root)) {
+        zend_string_release(XHPROF_G(root));
+    }
 }
 
 

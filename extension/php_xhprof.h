@@ -146,6 +146,14 @@ ZEND_DLEXPORT zend_op_array* hp_compile_string(zval *source_string, char *filena
 /* Pointer to the original execute function */
 static void (*_zend_execute_ex) (zend_execute_data *execute_data);
 ZEND_DLEXPORT void hp_execute_ex (zend_execute_data *execute_data);
+#elif PHP_VERSION_ID >= 80200
+/* Pointer to the original compile string function (used by eval) */
+static zend_op_array * (*_zend_compile_string) (zend_string *source_string, const char *filename, zend_compile_position position);
+ZEND_DLEXPORT zend_op_array* hp_compile_string(zend_string *source_string, const char *filename, zend_compile_position position);
+
+static zend_observer_fcall_handlers tracer_observer(zend_execute_data *execute_data);
+static void tracer_observer_begin(zend_execute_data *ex);
+static void tracer_observer_end(zend_execute_data *ex, zval *return_value);
 #else
 /* Pointer to the original compile string function (used by eval) */
 static zend_op_array * (*_zend_compile_string) (zend_string *source_string, const char *filename);
