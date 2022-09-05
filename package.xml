@@ -40,11 +40,11 @@
   <email>longxinhui@php.net</email>
   <active>yes</active>
  </lead>
- <date>2021-09-05</date>
- <time>13:22:00</time>
+ <date>2022-09-05</date>
+ <time>10:03:00</time>
  <version>
-  <release>2.3.5</release>
-  <api>2.3.5</api>
+  <release>2.3.6</release>
+  <api>2.3.6</api>
  </version>
  <stability>
   <release>stable</release>
@@ -52,7 +52,7 @@
  </stability>
  <license uri="http://www.apache.org/licenses/LICENSE-2.0.html">Apache 2.0</license>
  <notes>
-    - Fix multiple memory releases #62
+    - Compatible with PHP8.2RC1 #68
  </notes>
  <contents>
   <dir name="/">
@@ -122,19 +122,34 @@
  <extsrcrelease />
  <changelog>
    <release>
-   <date>2021-09-05</date>
-   <version>
-    <release>2.3.5</release>
-    <api>2.3.5</api>
-   </version>
-   <stability>
-    <release>stable</release>
-    <api>stable</api>
-   </stability>
-   <notes>
-    - Fix multiple memory releases #62
-   </notes>
-  </release>
+      <date>2022-09-05</date>
+      <version>
+       <release>2.3.6</release>
+       <api>2.3.6</api>
+      </version>
+      <stability>
+       <release>stable</release>
+       <api>stable</api>
+      </stability>
+      <notes>
+       - Compatible with PHP8.2RC1 #68
+      </notes>
+   </release>
+
+   <release>
+      <date>2021-09-05</date>
+      <version>
+       <release>2.3.5</release>
+       <api>2.3.5</api>
+      </version>
+      <stability>
+       <release>stable</release>
+       <api>stable</api>
+      </stability>
+      <notes>
+       - Fix multiple memory releases #62
+      </notes>
+   </release>
 
    <release>
    <date>2021-08-04</date>
