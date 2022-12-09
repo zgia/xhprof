@@ -526,6 +526,7 @@ void hp_clean_profiler_state()
 
     if (XHPROF_G(root)) {
         zend_string_release(XHPROF_G(root));
+        XHPROF_G(root) = NULL;
     }
 
     /* Delete the array storing ignored function names */
@@ -1246,6 +1247,7 @@ static void hp_stop()
 
     if (XHPROF_G(root)) {
         zend_string_release(XHPROF_G(root));
+        XHPROF_G(root) = NULL;
     }
 }
 
@@ -1263,6 +1265,7 @@ static inline void hp_array_del(zend_string **names)
         int i = 0;
         for (; names[i] != NULL && i < XHPROF_MAX_IGNORED_FUNCTIONS; i++) {
             zend_string_release(names[i]);
+            names[i] = NULL;
         }
 
         efree(names);
