@@ -51,9 +51,9 @@ function verify($expected, $actual, $description) {
 
   echo "Verifying {$description}...\n";
 
-  // 25% tolerance
+  // 25% tolerance (+ 1.5msec for slow builds)
   $range_low = ($expected * 0.75);
-  $range_high = ($expected * 1.25);
+  $range_high = ($expected * 1.25) + 1500;
 
   if (($actual < $range_low) ||
       ($actual > $range_high)) {
