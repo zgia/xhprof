@@ -40,11 +40,11 @@
   <email>longxinhui@php.net</email>
   <active>yes</active>
  </lead>
- <date>2022-11-05</date>
- <time>22:49:00</time>
+ <date>2022-12-14</date>
+ <time>12:22:00</time>
  <version>
-  <release>2.3.8</release>
-  <api>2.3.8</api>
+  <release>2.3.9</release>
+  <api>2.3.9</api>
  </version>
  <stability>
   <release>stable</release>
@@ -52,7 +52,8 @@
  </stability>
  <license uri="http://www.apache.org/licenses/LICENSE-2.0.html">Apache 2.0</license>
  <notes>
-    - fix version number
+    - Nullify references once not used to prevent double-frees #73
+    - Fixed clocks to microseconds conversion on Mac #75
  </notes>
  <contents>
   <dir name="/">
@@ -121,6 +122,22 @@
  <providesextension>xhprof</providesextension>
  <extsrcrelease />
  <changelog>
+   <release>
+      <date>2022-12-14</date>
+      <version>
+       <release>2.3.9</release>
+       <api>2.3.9</api>
+      </version>
+      <stability>
+       <release>stable</release>
+       <api>stable</api>
+      </stability>
+      <notes>
+       - Nullify references once not used to prevent double-frees #73
+       - Fixed clocks to microseconds conversion on Mac #75
+      </notes>
+   </release>
+
    <release>
       <date>2022-11-05</date>
       <version>
