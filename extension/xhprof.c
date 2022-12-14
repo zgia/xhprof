@@ -403,7 +403,7 @@ double get_timebase_conversion()
     mach_timebase_info_data_t info;
     (void) mach_timebase_info(&info);
 
-    return (info.numer / info.denom) * 1000;
+    return info.denom * 1000. / info.numer;
 #endif
 
     return 1.0;
